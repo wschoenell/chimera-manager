@@ -1,1 +1,1 @@
-__author__ = 'william'
+from chimera_manager.controllers.controller import Manager

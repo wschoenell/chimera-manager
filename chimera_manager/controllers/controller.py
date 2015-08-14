@@ -5,6 +5,7 @@ import os
 from chimera_manager.controllers.status import OperationStatus
 
 from chimera.core.chimeraobject import ChimeraObject
+from chimera.core.lock import lock
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.event import event
 from chimera.core.log import fmt
@@ -15,17 +16,7 @@ import logging
 
 class Manager(ChimeraObject):
 
-    __config__ = {  "max_wind": 60,            # maximum allowed wind speed in km/h
-                    "max_humidity": 85,        # maximum allowed external humidity in %
-                    "min_temp": 1.0,           # minimum allowed external temperature in Celsius
-                    "min_dewpoint": 3.0,       # minimum allowed external dew point temperature in Celsius
-                    "min_sun_alt": -18,        # Sun altitude at the beginning/end of the night in degrees
-                                               # (when the observations should start/end)
-                    "close_on_none": True,     # Close if there is no information about the weather
-                    "close_on_network": True,  # Close if there is no network connectivity
-                    "scheduler_script": None,  # Command line path to the scheduler script. This is executed after the
-                                               # end of the night clean up in preparation for next night
-                    "telegram-ip": None,       # Telegram host IP
+    __config__ = {  "telegram-ip": None,       # Telegram host IP
                     "telegram-port": None,     # Telegram host port
                     "telegram-timeout": None,  # Telegram host timeout
                     "freq": 0.01               # Set manager watch frequency in Hz.
@@ -149,6 +140,18 @@ class Manager(ChimeraObject):
 
     def checkNetwork(self):
         return OperationStatus.CLOSED
+
+    def broadCast(self,msg):
+        self.log.info(msg)
+        if self._telegramBroadcast:
+            self._telegramSocket.write(msg+'\r\n')
+
+    @lock
+    def status(self,new=None):
+        if not new:
+            return self._operationStatus
+        self._operationStatus = new
+        return
 
     @event
     def statusChanged(self,old,new):
