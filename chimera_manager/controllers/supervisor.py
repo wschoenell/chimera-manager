@@ -2,7 +2,10 @@
 
 import os
 
+from chimera_manager.controllers.machine import Machine
+from chimera_manager.controllers.checklist import CheckList
 from chimera_manager.controllers.status import OperationStatus
+from chimera_manager.controllers.states import State
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.lock import lock
@@ -14,7 +17,7 @@ import threading
 import telnetlib
 import logging
 
-class Manager(ChimeraObject):
+class Supervisor(ChimeraObject):
 
     __config__ = {  "telegram-ip": None,       # Telegram host IP
                     "telegram-port": None,     # Telegram host port
@@ -31,9 +34,11 @@ class Manager(ChimeraObject):
         self._telegramSocket = None
         self._testIP = '8.8.8.8' # Use google's dns IP as beacon to network connectivity
 
-        self._loghandler = None
+        self._log_handler = None
 
-        self._abort = threading.Event()
+        self.checklist = None
+        self.machine = None
+
 
     def __start__(self):
 
@@ -42,20 +47,15 @@ class Manager(ChimeraObject):
         # Connect to telegram, if info is given
         self.connectTelegram()
 
-        # Get list of available weather stations
-        self._weatherStations = self.getManager().getResourcesByClass("WeatherStation")
-        self._nWS = len(self._weatherStations)
-
-        if self._nWS == 0:
-            self.log.warning("No Weather Station is available. Manager will be cripple without weather information.")
-            if self["close_on_none"]:
-                self.log.error("Manager cannot operate in 'close_on_none' mode without a weather station."
-                               "Switching to cripple mode!")
-                self["close_on_none"] = False
+        self.checklist = CheckList(self)
+        self.machine = Machine(self.checklist, self)
 
         self.setHz(self["freq"])
 
     def __stop__(self):
+
+        self.machine.state(State.SHUTDOWN)
+        self.checklist.mustStop.set()
 
         if self.isTelegramConnected():
             self.disconnectTelegram()
@@ -64,24 +64,19 @@ class Manager(ChimeraObject):
 
     def control(self):
 
-        self.log.debug('[control]: Current status is "%s"'%(self._operationStatus))
+        self.log.debug('[control] current status is "%s"'%(self._operationStatus))
 
-        status = self.checkTime()
-
-        if status == OperationStatus.OPERATING:
-            status = self.checkWeather()
-
-        if status == OperationStatus.OPERATING:
-            status == self.checkNetwork()
-
-        if status != self._operationStatus:
-            self.log.debug("[control]: Operation status changed %s -> %s"%(self._operationStatus,
-                                                                           status))
-            self.statusChanged(self._operationStatus,status)
+        if self.machine.state() == State.IDLE:
+            self.machine.state(State.START)
+            return True
         else:
-            self.log.debug('[control]: Current status %s'%(status))
+            self.log.info("[control] current machine state is %s."%self.machine.state())
+
+        if not self.machine.isAlive():
+            self.machine.start()
 
         return True
+
 
     def connectTelegram(self):
 
@@ -121,9 +116,9 @@ class Manager(ChimeraObject):
             self._closeLogger()
 
         self._log_handler = logging.FileHandler(os.path.join(SYSTEM_CONFIG_DIRECTORY,
-                                                             "manager.log"))
+                                                             "supervisor.log"))
 
-        self._log_handler.setFormatter(logging.Formatter(fmt=fmt))
+        # self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s.%(msecs)d %(origin)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s'))
         self._log_handler.setLevel(logging.DEBUG)
         self.log.addHandler(self._log_handler)
 
@@ -132,19 +127,16 @@ class Manager(ChimeraObject):
             self.log.removeHandler(self._log_handler)
             self._log_handler.close()
 
-    def checkTime(self):
-        return OperationStatus.CLOSED
-
-    def checkWeather(self):
-        return OperationStatus.CLOSED
-
-    def checkNetwork(self):
-        return OperationStatus.CLOSED
+    def getLogger(self):
+        return self._log_handler
 
     def broadCast(self,msg):
         self.log.info(msg)
         if self._telegramBroadcast:
             self._telegramSocket.write(msg+'\r\n')
+
+    def site(self):
+        return self.getManager().getProxy('/Site/0')
 
     @lock
     def status(self,new=None):
@@ -159,3 +151,25 @@ class Manager(ChimeraObject):
         Wake all calls for checking their conditions.
         :return:
         '''
+        pass
+
+    @event
+    def checkBegin(self,item):
+        pass
+
+    @event
+    def checkComplete(self,item,status):
+        pass
+
+    @event
+    def itemStatusChanged(self,item,status):
+        pass
+
+    @event
+    def itemResponseBegin(self,item,response):
+        pass
+
+
+    @event
+    def itemResponseComplete(self,item,response):
+        pass

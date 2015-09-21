@@ -7,3 +7,10 @@ OperationStatus = Enum("DAYTIME_IDLE",
                        "NETWORK_CLOSED",
                        "TECHNICAL_CLOSED",
                        "CLOSED")
+
+FlagStatus = Enum("UNSET",
+                  "OK",
+                  "WARNING",
+                  "ALERT",
+                  "ABORTED",
+                  "ERROR")

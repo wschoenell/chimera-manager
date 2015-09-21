@@ -40,7 +40,6 @@ class TimeHandler(CheckHandler):
     sun is above the specified value or False, otherwise.
     '''
     @staticmethod
-    @requires("site")
     def process(check):
         site = CheckHandler.site
 

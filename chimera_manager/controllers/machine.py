@@ -2,6 +2,7 @@
 from chimera_manager.controllers.states import State
 from chimera_manager.controllers.model import Session, List
 from chimera_manager.controllers.status import OperationStatus
+from chimera_manager.core.exceptions import CheckAborted
 
 from chimera.core.site import Site
 
@@ -10,11 +11,11 @@ import logging
 
 import time
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__.replace("_manager",".supervisor"))
 
 class Machine(threading.Thread):
 
-    __state = None
+    __state = State.OFF
     __stateLock = threading.Lock()
     __wakeUpCall = threading.Condition()
 
@@ -31,7 +32,7 @@ class Machine(threading.Thread):
         try:
             if not state: return self.__state
             if state == self.__state: return
-            self.controller.stateChanged(state, self.__state)
+            self.controller.statusChanged(state, self.__state)
             log.debug("Changing state, from %s to %s." % (self.__state, state))
             self.__state = state
             self.wakeup()
@@ -40,7 +41,7 @@ class Machine(threading.Thread):
 
     def run(self):
         log.info("Starting manager machine")
-        self.state(State.OFF)
+        self.state(State.IDLE)
 
         # inject instruments on handlers
         self.checklist.__start__()
@@ -52,14 +53,15 @@ class Machine(threading.Thread):
                 self.sleep()
 
             if self.state() == State.START:
-                log.debug("[start] looking for something to do...")
+                log.debug("[start] running checklist...")
 
                 # Run checklist
                 self.state(State.BUSY)
-                status = self.checklist.run()
-                if status != self.controller.
+                self._process()
 
-                self.state(State.OFF)
+            elif self.state() == State.IDLE:
+                log.debug("[idle] waiting for wake-up call..")
+                self.sleep()
 
             elif self.state() == State.BUSY:
                 log.debug("[busy] waiting tasks to finish..")
@@ -67,12 +69,12 @@ class Machine(threading.Thread):
 
             elif self.state() == State.STOP:
                 log.debug("[stop] trying to stop current program")
-                self.executor.stop()
+                self.checklist.mustStop.set()
                 self.state(State.OFF)
 
             elif self.state() == State.SHUTDOWN:
                 log.debug("[shutdown] trying to stop current program")
-                self.executor.stop()
+                self.checklist.mustStop.set()
                 log.debug("[shutdown] should die soon.")
                 break
 
@@ -90,61 +92,36 @@ class Machine(threading.Thread):
         self.__wakeUpCall.notifyAll()
         self.__wakeUpCall.release()
 
-    def restartAllPrograms(self):
-        session = Session()
-
-        programs = session.query(Program).all()
-        for program in programs:
-            program.finished = False
-
-        session.commit()
-
-    def _process(self, program):
+    def _process(self):
 
         def process ():
 
             # session to be used by executor and handlers
             session = Session()
 
-            task = session.merge(program)
-
-            log.debug("[start] %s" % str(task))
-
-            site=Site()
-            nowmjd=site.MJD()
-            log.debug("[start] Current MJD is %f",nowmjd)
-            if program.slewAt:
-                waittime=(program.slewAt-nowmjd)*86.4e3
-                if waittime>0.0:
-                    log.debug("[start] Waiting until MJD %f to start slewing",program.slewAt)
-                    log.debug("[start] Will wait for %f seconds",waittime)
-                    time.sleep(waittime)
-                else:
-                    log.debug("[start] Specified slew start MJD %s has already passed; proceeding without waiting",program.slewAt)
-            else:
-               log.debug("[start] No slew time specified, so no waiting")
-            log.debug("[start] Current MJD is %f",site.MJD())
-            log.debug("[start] Proceeding since MJD %f should have passed",program.slewAt)
-            self.controller.programBegin(program)
-
+            checklist = None
             try:
-                self.executor.execute(task)
-                log.debug("[finish] %s" % str(task))
-                self.scheduler.done(task)
-                self.controller.programComplete(program, SchedulerStatus.OK)
-                self.state(State.IDLE)
-            except ProgramExecutionException, e:
-                self.scheduler.done(task, error=e)
-                self.controller.programComplete(program, SchedulerStatus.ERROR, str(e))
-                self.state(State.IDLE)
-                log.debug("[error] %s (%s)" % (str(task), str(e)))
-            except ProgramExecutionAborted, e:
-                self.scheduler.done(task, error=e)
-                self.controller.programComplete(program, SchedulerStatus.ABORTED, "Aborted by user.")
+                checklist = session.query(List)
+            except Exception, e:
+                log.exception(e)
                 self.state(State.OFF)
-                log.debug("[aborted by user] %s" % str(task))
+                return
 
+            log.debug("[start] processing %i items" % checklist.count())
+
+            for item in checklist:
+                try:
+                    log.debug("[start] Checking %s"%item)
+                    self.checklist.check(item)
+                except CheckAborted:
+                    self.state(State.OFF)
+                    log.debug("[aborted by user] %s" % str(item))
+                    break
+                except Exception, e:
+                    log.exception(e)
+                    pass
             session.commit()
+            self.state(State.IDLE)
 
         t = threading.Thread(target=process)
         t.setDaemon(False)

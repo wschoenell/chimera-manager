@@ -12,12 +12,17 @@ metaData.bind = engine
 Session = sessionmaker(bind=engine)
 Base = declarative_base(metadata=metaData)
 
-import datetime as dt
-
 class List(Base):
     __tablename__ = "list"
     id         = Column(Integer, primary_key=True)
-    check      = relation("Check", backref=backref("list", order_by="Check.id"),
+    status     = Column(Integer, default=0) # check status.FlagStatus
+    lastUpdate = Column(DateTime, default=None)
+    eager      = Column(Boolean, default=False) # Run response every time. Normal operation is run
+                                                # only when status change
+
+    check_id     = Column(Integer)
+
+    check      = relation("Check", backref=backref("list", order_by="Check.list_id"),
                          cascade="all, delete, delete-orphan")
     response   = relation("Response", backref=backref("list", order_by="response.id"),
                          cascade="all, delete, delete-orphan")
@@ -26,7 +31,8 @@ class List(Base):
 class Check(Base):
 
     id         = Column(Integer, primary_key=True)
-    # check_id = Column(Integer, ForeignKey("program.id"))
+    list_id = Column(Integer, ForeignKey("list.check_id"))
+
     check_type = Column('type', String(100))
 
 
@@ -46,6 +52,7 @@ class CheckTime(Check):
                                                              "rising" if self.rising else "setting")
 
 class Response(Base):
-    id            = Column(Integer, primary_key=True)
+    __tablename__ = "response"
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     response_id   = Column(Integer) # The response id
     response_type = Column(String(100))
