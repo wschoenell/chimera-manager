@@ -28,6 +28,18 @@ class Manager(ChimeraCLI):
         Check manager status and control some actions.
         '''
 
+        databaseHelp = """Database options\n\tThe file must have the following format:
+
+        # type    name              (Par1,Par2,...,ParN) Response       (Par1,Par2,...,ParN)
+        CheckTime OpenDome          (-20, Setting)       OpenDome       ()
+        CheckTime DarkSeq           (-25, Setting)       MkDarks        (darkconfig.txt)
+        CheckTime SkyFlat           (-15, Setting)       MkSkyFlats     (skyflatconfig.txt)
+        CheckTemp ControlFans       (Lower)              ControlFans    (ON)
+        ...
+        """
+
+        self.addHelpGroup("DB", databaseHelp)
+
         self.addHelpGroup("RUN", "Start/Stop/Monitor")
 
     ############################################################################

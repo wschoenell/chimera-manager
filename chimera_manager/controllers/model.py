@@ -21,10 +21,11 @@ class List(Base):
                                                 # only when status change
 
     check_id     = Column(Integer)
+    response_id     = Column(Integer)
 
     check      = relation("Check", backref=backref("list", order_by="Check.list_id"),
                          cascade="all, delete, delete-orphan")
-    response   = relation("Response", backref=backref("list", order_by="response.id"),
+    response   = relation("Response", backref=backref("list", order_by="Response.list_id"),
                          cascade="all, delete, delete-orphan")
 
 
@@ -53,6 +54,12 @@ class CheckTime(Check):
 
 class Response(Base):
     __tablename__ = "response"
-    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
-    response_id   = Column(Integer) # The response id
+
+    id         = Column(Integer, primary_key=True)
+    list_id = Column(Integer, ForeignKey("list.response_id"))
+
     response_type = Column(String(100))
+
+    __mapper_args__ = {'polymorphic_on': response_type}
+
+metaData.create_all(engine)
