@@ -10,10 +10,16 @@ import sys
 import os
 import time
 import datetime as dt
+import shutil
+import re
 
 from chimera.core.cli import ChimeraCLI, action
 from chimera.core.callback import callback
 from chimera.util.output import blue, green, red
+from chimera.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera.controllers.scheduler.model import Session
+
+from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
 
 ################################################################################
 
@@ -28,19 +34,138 @@ class Manager(ChimeraCLI):
         Check manager status and control some actions.
         '''
 
+        self.addHelpGroup("SUPERVISOR", "Supervisor")
+        self.addController(name="supervisor",
+                           cls="Supervisor",
+                           required=True,
+                           help="Supervisor controller to be used",
+                           helpGroup="SUPERVISOR")
+
         databaseHelp = """Database options\n\tThe file must have the following format:
 
-        # type    name              (Par1,Par2,...,ParN) Response       (Par1,Par2,...,ParN)
-        CheckTime OpenDome          (-20, Setting)       OpenDome       ()
-        CheckTime DarkSeq           (-25, Setting)       MkDarks        (darkconfig.txt)
-        CheckTime SkyFlat           (-15, Setting)       MkSkyFlats     (skyflatconfig.txt)
-        CheckTemp ControlFans       (Lower)              ControlFans    (ON)
+        # type    name             Eager (Par1,Par2,...,ParN) Response       (Par1,Par2,...,ParN)
+        CheckTime OpenDome         False (-20, Setting)       OpenDome       ()
+        CheckTime DarkSeq          False (-25, Setting)       MkDarks        (darkconfig.txt)
+        CheckTime SkyFlat          False (-15, Setting)       MkSkyFlats     (skyflatconfig.txt)
+        CheckTemp ControlFans      False (Lower)              ControlFans    (ON)
         ...
         """
 
         self.addHelpGroup("DB", databaseHelp)
+        self.addParameters(dict(name="filename",
+                                long="file",
+                                short="f",
+                                helpGroup="DB",
+                                default="",
+                                help="Filename of the input database.",
+                                metavar="FILENAME"))
 
         self.addHelpGroup("RUN", "Start/Stop/Monitor")
+
+    ############################################################################
+
+    @action(long="new",
+            help="Generate a new database from a text file (excluding all programs already in database)",
+            helpGroup="DB",
+            actionGroup="DB")
+    def newDatabase(self, options):
+
+        # save a copy
+        if os.path.exists(DEFAULT_PROGRAM_DATABASE):
+            shutil.copy(DEFAULT_PROGRAM_DATABASE, "%s.%s.bak" %
+                        (DEFAULT_PROGRAM_DATABASE, time.strftime("%Y%m%d%H%M%S")))
+
+        # delete all programs
+        session = Session()
+        programs = session.query(List).all()
+        for program in programs:
+            session.delete(program)
+        session.commit()
+
+        self.generateDatabase(options)
+
+    ############################################################################
+
+    @action(long="append", help="Append programs to database from a text file",
+            helpGroup="DB", actionGroup="DB")
+    def appendDatabase(self, options):
+        self.generateDatabase(options)
+
+    ############################################################################
+
+    def generateDatabase(self, options):
+        f = None
+        try:
+            f = open(options.filename, "r")
+        except:
+            self.exit("Could not find '%s'." % options.filename)
+
+        session = Session()
+
+        lineRe = re.compile('(?P<itemtype>[\w]+)\s+(?P<itemname>\'([^\\n\'\\\\]|\\\\.)*\'|"([^\\n"\\\\]|\\\\.)*"|([^ \\n"\\\\]|\\\\.)*)\s+(?P<eager>[\w]+)\s+\((?P<checkpar>[^()]*)\)'
+                            '\s+(?P<responsetype>\'([^\\n\'\\\\]|\\\\.)*\'|"([^\\n"\\\\]|\\\\.)*"|([^ \\n"\\\\]|\\\\.)*)\s+\((?P<responsepar>[^()]*)\)')
+        items = []
+        supervisor = self.supervisor
+        checkItems = supervisor.getItems()
+        responseList = supervisor.getResponses()
+
+        show_item_list = True
+
+        for i, line in enumerate(f):
+
+            if line.startswith("#"):
+                continue
+            if len(line) == 1:
+                continue
+
+            matchs = lineRe.search(line)
+
+            if matchs is None:
+                print "Couldn't process line #%d" % i
+                continue
+
+            params = matchs.groupdict()
+
+            itemtype = params['itemtype'].upper()
+            itemname = params['itemname'].upper()
+            eager = params['eager'].upper() == 'TRUE'
+            checkpars = params['checkpar'].split(",")
+            responsetype = params['responsetype'].upper()
+            responsepar = params['responsepar'].split(",")
+
+
+            item = List(name=itemname,
+                        eager=eager)
+
+
+            self.out("# item: %s" % item.name)
+
+            if itemtype in checkItems.keys():
+
+                if len(checkpars) > 0:
+                    item.check.append(checkItems[itemtype](*checkpars))
+                else:
+                    item.check.append(checkItems[itemtype]())
+
+            else:
+                self.out('Could not find item "%s" in items list. Skipping...'%(itemtype))
+
+                if show_item_list:
+                    self.out('Following options are present:')
+                    for i in checkItems.keys():
+                        self.out(' - %s'%i)
+                    show_item_list = False
+
+                continue
+
+            item.response.append(Response(response_type=responsetype))
+
+            items.append(item)
+
+        session.add_all(items)
+        session.commit()
+
+        self.out("Manager database updated. New check list in effect from now on.")
 
     ############################################################################
 

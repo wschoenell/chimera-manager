@@ -9,7 +9,7 @@ to open or close under certain limits and send logging information to human watc
 Usage
 -----
 
-This controller
+This controller uses a da
 
 Installation
 ------------

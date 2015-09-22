@@ -26,9 +26,16 @@ class CheckList(object):
 
         self.controller = controller
         self.checkHandlers = {CheckTime: TimeHandler}
+        self.itemsList = {}
         self.responseList = {}
 
     def __start__(self):
+
+        # configure items list
+        from chimera_manager.controllers import model
+        for name,obj in inspect.getmembers(model):
+            if inspect.isclass(obj) and issubclass(obj,model.Check):
+                self.itemsList[name.upper()] = obj
 
         # Configure handlers
         for handler in self.checkHandlers.values():
@@ -37,7 +44,7 @@ class CheckList(object):
         # Configure base responses
         for name,obj in inspect.getmembers(baseresponse):
             if inspect.isclass(obj) and issubclass(obj,baseresponse.BaseResponse):
-                self.responseList[name] = obj
+                self.responseList[name.upper()] = obj
 
         # Todo: Configure user-defined responses
 
@@ -51,7 +58,7 @@ class CheckList(object):
 
         responseList = {}
         for response in item.response:
-            responseList['%s.%s'%(response.id,response.response_id)] = response.response_type
+            responseList['%s.%s'%(response.id,response.list_id)] = response.response_type
 
         for check in item.check:
 
@@ -62,7 +69,7 @@ class CheckList(object):
 
             try:
                 self.currentCheck = check
-                self.currentHandler = self.actionHandlers[type(check)]
+                self.currentHandler = self.checkHandlers[type(check)]
 
                 logMsg = str(self.currentHandler.log(check))
                 log.debug("[start] %s " % logMsg)
@@ -108,3 +115,4 @@ class CheckList(object):
                         self.controller.getManager().getProxy(self.controller[instrument]))
             except ObjectNotFoundException, e:
                 log.error("No instrument to inject on %s handler" % handler)
+

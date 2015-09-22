@@ -40,8 +40,9 @@ class TimeHandler(CheckHandler):
     sun is above the specified value or False, otherwise.
     '''
     @staticmethod
+    @requires("site")
     def process(check):
-        site = CheckHandler.site
+        site = TimeHandler.site
 
         # calculate mid day
         sunrise = site.MJD(site.sunrise())
@@ -54,15 +55,15 @@ class TimeHandler(CheckHandler):
 
         if sun_pos.alt > check.sun_altitude:
             if (midnight and mid < now) or (not midnight and mid > now):
-                return 0
+                return 0, "Sun above threshould rising"
             else:
-                return 1
+                return 1, "Sun above threshould setting"
         else:
             if (midnight and mid < now) or (not midnight and mid > now):
-                return 2
+                return 2, "Sun bellow threshould rising"
             else:
-                return 3
+                return 3, "Sun bellow threshould setting"
 
     @staticmethod
     def log(check):
-        return "Checking if sun is above %s degrees"%check.min_sun_alt
+        return "Checking if sun is above %s degrees"%check.sun_altitude

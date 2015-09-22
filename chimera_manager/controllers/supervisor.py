@@ -19,7 +19,11 @@ import logging
 
 class Supervisor(ChimeraObject):
 
-    __config__ = {  "telegram-ip": None,       # Telegram host IP
+    __config__ = {  "site"       : "/Site/0",
+                    "telescope"  : "/Telescope/0",
+                    "camera"     : "/Camera/0",
+                    "dome"       : "/Dome/0",
+                    "telegram-ip": None,       # Telegram host IP
                     "telegram-port": None,     # Telegram host port
                     "telegram-timeout": None,  # Telegram host timeout
                     "freq": 0.01               # Set manager watch frequency in Hz.
@@ -137,6 +141,12 @@ class Supervisor(ChimeraObject):
 
     def site(self):
         return self.getManager().getProxy('/Site/0')
+
+    def getItems(self):
+        return self.checklist.itemsList
+
+    def getResponses(self):
+        return self.checklist.responseList
 
     @lock
     def status(self,new=None):
