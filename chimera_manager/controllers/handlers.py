@@ -1,3 +1,4 @@
+import datetime as dt
 
 def requires(instrument):
     """Simple dependecy injection mechanism. See ProgramExecutor"""
@@ -51,19 +52,17 @@ class TimeHandler(CheckHandler):
         midnight = sunrise < sunset
         now = site.MJD()
 
-        sun_pos = site.sunpos()
-
-        status = 0
+        sun_pos = site.sunpos(dt.datetime.now())
 
         if sun_pos.alt.D > check.sun_altitude:
 
             if (midnight and mid < now) or (not midnight and mid > now):
-                return True if check.above and check.rising else False, "Sun above threshold rising"
+                return True if check.above and check.rising else False, "local: %s | Sun @ %s. Above threshold rising"%(site.localtime(),sun_pos)
             else:
                 return True if check.above and not check.rising else False, "MJD: %f | Sun @ %s. Above threshold setting"%(now,sun_pos)
         else:
             if (midnight and mid < now) or (not midnight and mid > now):
-                return True if not check.above and check.rising else False, "Sun bellow threshold rising"
+                return True if not check.above and check.rising else False, "MJD: %f | Sun @ %s. Bellow threshold rising"%(now,sun_pos)
             else:
                 return True if not check.above and not check.rising else False, "Sun bellow threshold setting"
 

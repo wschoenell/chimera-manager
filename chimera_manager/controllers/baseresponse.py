@@ -72,9 +72,9 @@ class OpenDome(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = BaseResponse.dome
+        dome = OpenDome.dome
 
-        dome.open()
+        dome.openSlit()
 
 class CloseDome(BaseResponse):
 
@@ -83,7 +83,7 @@ class CloseDome(BaseResponse):
     def process(check):
         dome = BaseResponse.dome
 
-        dome.close()
+        dome.closeSlit()
 
 class ExecuteScript(BaseResponse):
 
@@ -97,7 +97,6 @@ class ExecuteScript(BaseResponse):
 class SendTelegram(BaseResponse):
 
     @staticmethod
-    @requires("manager")
     def process(check):
         manager = BaseResponse.manager
 

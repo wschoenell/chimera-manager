@@ -37,7 +37,7 @@ class CheckList(object):
             if inspect.isclass(obj) and issubclass(obj,model.Check):
                 self.itemsList[name.upper()] = obj
 
-        # Configure handlers
+        # Configure check handlers
         for handler in self.checkHandlers.values():
             self._injectInstrument(handler)
 
@@ -45,6 +45,10 @@ class CheckList(object):
         for name,obj in inspect.getmembers(baseresponse):
             if inspect.isclass(obj) and issubclass(obj,baseresponse.BaseResponse):
                 self.responseList[name.upper()] = obj
+
+        # Configure response handlers
+        for handler in self.responseList.keys():
+            self._injectInstrument(self.responseList[handler])
 
         # Todo: Configure user-defined responses
 
@@ -85,14 +89,18 @@ class CheckList(object):
                 elif status and status != item.status:
                     self.controller.itemStatusChanged(item,status)
                     # Get response
-                    currentResponse = self.responseList[item.response]
-                    # self.currentResponse = self.responseList[currentResponse]
-                    # self.controller.itemResponseBegin(item,currentResponse)
-                    currentResponse.process(check)
-                    item.status = status.index
-                    item.lastUpdate = self.controller.site().localtime()
+                    for response in item.response:
+                        currentResponse = self.responseList[response.response_type]
+
+                        # self.currentResponse = self.responseList[currentResponse]
+                        # self.controller.itemResponseBegin(item,currentResponse)
+                        currentResponse.process(check)
+                        # item.status = status.index
+                        item.lastUpdate = self.controller.site().localtime()
                     self.controller.itemResponseComplete(item,msg)
                     self.controller.checkComplete(check, FlagStatus.OK)
+                elif status == item.status:
+                    log.debug('Status unchanged. Skipping response.')
                 item.status = status
             except CheckExecutionException, e:
                 self.controller.checkComplete(check, FlagStatus.ERROR)
@@ -104,7 +112,7 @@ class CheckList(object):
 
 
     def _injectInstrument(self, handler):
-        if not issubclass(handler, CheckHandler):
+        if not (issubclass(handler, CheckHandler) or issubclass(handler,baseresponse.BaseResponse)):
             return
 
         if not hasattr(handler.process, "__requires__"):
