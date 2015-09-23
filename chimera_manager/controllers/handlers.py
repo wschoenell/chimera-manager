@@ -53,17 +53,21 @@ class TimeHandler(CheckHandler):
 
         sun_pos = site.sunpos()
 
-        if sun_pos.alt > check.sun_altitude:
+        status = 0
+
+        if sun_pos.alt.D > check.sun_altitude:
+
             if (midnight and mid < now) or (not midnight and mid > now):
-                return 0, "Sun above threshould rising"
+                return True if check.above and check.rising else False, "Sun above threshold rising"
             else:
-                return 1, "Sun above threshould setting"
+                return True if check.above and not check.rising else False, "MJD: %f | Sun @ %s. Above threshold setting"%(now,sun_pos)
         else:
             if (midnight and mid < now) or (not midnight and mid > now):
-                return 2, "Sun bellow threshould rising"
+                return True if not check.above and check.rising else False, "Sun bellow threshold rising"
             else:
-                return 3, "Sun bellow threshould setting"
+                return True if not check.above and not check.rising else False, "Sun bellow threshold setting"
+
 
     @staticmethod
     def log(check):
-        return "Checking if sun is above %s degrees"%check.sun_altitude
+        return "%s"%(check)

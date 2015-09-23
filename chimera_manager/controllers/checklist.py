@@ -75,24 +75,25 @@ class CheckList(object):
                 log.debug("[start] %s " % logMsg)
                 self.controller.checkBegin(check, logMsg)
 
-                rid,status = self.currentHandler.process(check) # return response id
+                status,msg = self.currentHandler.process(check) # return response id
 
-                # Check for abort flag
+                log.debug("[start] %s: %s " % (status,msg))
+
                 if self.mustStop.isSet():
                     self.controller.checkComplete(check, FlagStatus.ABORTED)
                     raise CheckAborted()
-                elif status != FlagStatus[item.status] or item.eager:
+                elif status and status != item.status:
                     self.controller.itemStatusChanged(item,status)
                     # Get response
-                    currentResponse = self.responseList['%s.%s'%(check.id,rid)]
-                    self.currentResponse = self.responseList[currentResponse]
-                    self.controller.itemResponseBegin(item,currentResponse)
-                    self.currentResponse.process(check)
+                    currentResponse = self.responseList[item.response]
+                    # self.currentResponse = self.responseList[currentResponse]
+                    # self.controller.itemResponseBegin(item,currentResponse)
+                    currentResponse.process(check)
                     item.status = status.index
                     item.lastUpdate = self.controller.site().localtime()
-                    self.controller.itemResponseComplete(item,currentResponse)
+                    self.controller.itemResponseComplete(item,msg)
                     self.controller.checkComplete(check, FlagStatus.OK)
-
+                item.status = status
             except CheckExecutionException, e:
                 self.controller.checkComplete(check, FlagStatus.ERROR)
                 raise

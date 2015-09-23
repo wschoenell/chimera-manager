@@ -15,7 +15,7 @@ Base = declarative_base(metadata=metaData)
 class List(Base):
     __tablename__ = "list"
     id         = Column(Integer, primary_key=True)
-    status     = Column(Integer, default=0) # check status.FlagStatus
+    status     = Column(Boolean, default=False) # check status.FlagStatus
     lastUpdate = Column(DateTime, default=None)
     name       = Column(String,default=None)
 
@@ -51,15 +51,18 @@ class CheckTime(Check):
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     sun_altitude = Column(Float, default=0.0) # The desired altitude
+    above = Column(Boolean, default=True) # Is it above (True) or below (False) specified altitude?
     rising = Column(Boolean, default=False) # Is it rising (True) or setting (False)?
 
-    def __init__(self, sun_alt,rising):
+    def __init__(self, sun_alt,above,rising):
         self.sun_altitude = float(sun_alt)
+        self.above = above.upper().replace(" ","") == "ABOVE"
         self.rising = rising.upper().replace(" ","") == 'RISING'
 
     def __str__ (self):
-        return "checktime: Sun @ %.2f Degrees, %s" % (self.sun_altitude,
-                                                             "rising" if self.rising else "setting")
+        return "checktime: Sun %s %.2f Degrees, %s" % ("above" if self.above else "below",
+                                                       self.sun_altitude,
+                                                       "rising" if self.rising else "setting")
 
 class Response(Base):
     __tablename__ = "response"
