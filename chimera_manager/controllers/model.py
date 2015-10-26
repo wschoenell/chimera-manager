@@ -64,6 +64,32 @@ class CheckTime(Check):
                                                        self.sun_altitude,
                                                        "rising" if self.rising else "setting")
 
+class CheckHumidity(Check):
+    __tablename__ = "checkhumidity"
+    __mapper_args__ = {'polymorphic_identity': 'CheckHumidity'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    humidity = Column(Float, default=0.0) # The desired humidity
+
+    def __init__(self, humidity):
+        self.humidity= float(humidity)
+
+    def __str__ (self):
+        return "checkhumidity: threshold %.2f " % (self.humidity)
+
+class CheckTemperature(Check):
+    __tablename__ = "checktemperature"
+    __mapper_args__ = {'polymorphic_identity': 'CheckTemperature'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    temperature = Column(Float, default=0.0) # The desired temperature
+
+    def __init__(self, temperature):
+        self.temperature= float(temperature)
+
+    def __str__ (self):
+        return "checktemperature: threshold %.2f " % (self.temperature)
+
 class Response(Base):
     __tablename__ = "response"
 

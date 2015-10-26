@@ -71,3 +71,23 @@ class TimeHandler(CheckHandler):
     @staticmethod
     def log(check):
         return "%s"%(check)
+
+
+class HumidityHandler(CheckHandler):
+    '''
+    This class checks if humidity is above or bellow some threshold.
+
+    Process will return True if humidity is above specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstation")
+    def process(check):
+        weatherstation = HumidityHandler.weatherstation
+
+        ret = check.humidity < weatherstation.humidity()
+        msg = "Humidity OK" if ret else "Humidity higher than specified threshold"
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
