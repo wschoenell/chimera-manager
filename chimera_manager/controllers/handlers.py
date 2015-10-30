@@ -84,8 +84,100 @@ class HumidityHandler(CheckHandler):
     def process(check):
         weatherstation = HumidityHandler.weatherstation
 
-        ret = check.humidity < weatherstation.humidity()
-        msg = "Humidity OK" if ret else "Humidity higher than specified threshold"
+        humidity = weatherstation.humidity()
+        ret = check.humidity < humidity.value
+        msg = "Humidity OK (%.2f/%.2f)"%(humidity.value,check.humidity) if not ret \
+            else "Humidity higher than specified threshold (%.2f/%.2f)"%(humidity.value,check.humidity)
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
+class TemperatureHandler(CheckHandler):
+    '''
+    This class checks if temperature is above or bellow some threshold.
+
+    Process will return True if temperature is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstation")
+    def process(check):
+        weatherstation = TemperatureHandler.weatherstation
+
+        temperature = weatherstation.temperature()
+        ret = check.temperature > temperature
+        msg = "Temperature OK (%.2f/%.2f)"%(temperature.value,
+                                            check.temperature) if not ret \
+            else "Temperature lower than specified threshold(%.2f/%.2f)"%(temperature.value,
+                                            check.temperature)
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
+class WindSpeedHandler(CheckHandler):
+    '''
+    This class checks if wind speed is above or bellow some threshold.
+
+    Process will return True if wind speed is above specified threshold or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstation")
+    def process(check):
+        weatherstation = WindSpeedHandler.weatherstation
+
+        windspeed = weatherstation.wind_speed()
+        ret = check.windspeed < windspeed.value
+        msg = "Wind speed OK (%.2f/%.2f)"%(windspeed.value,
+                                           check.windspeed) if not ret \
+            else "Wind speed higher than specified threshold (%.2f/%.2f)"%(windspeed.value,
+                                           check.windspeed)
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
+class DewPointHandler(CheckHandler):
+    '''
+    This class checks if dew point is above or bellow some threshold.
+
+    Process will return True if dew point is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstation")
+    def process(check):
+        weatherstation = DewPointHandler.weatherstation
+
+        ret = check.dewpoint > weatherstation.dew_point()
+        msg = "Dew point OK" if not ret else "Dew point lower than specified threshold"
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
+class DewHandler(CheckHandler):
+    '''
+    This class checks if the difference between temperature and dew point is above or bellow some threshold.
+
+    Process will return True if difference is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstation")
+    def process(check):
+        weatherstation = DewHandler.weatherstation
+
+        temperature = weatherstation.temperature()
+        dewpoint = weatherstation.dew_point()
+        tempdiff = ( temperature.value - dewpoint.value )
+        ret = check.tempdiff > tempdiff
+        msg = "Dew OK (%.2f/%.2f)"%(tempdiff,
+                                    check.tempdiff) if not ret \
+            else "Dew point difference lower than specified threshold (%.2f/%.2f)"%(tempdiff,
+                                    check.tempdiff)
         return ret, msg
 
     @staticmethod

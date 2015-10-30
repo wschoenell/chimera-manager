@@ -20,10 +20,18 @@ class StopAll(BaseResponse):
     @requires("dome")
     @requires("telescope")
     @requires("camera")
+    @requires("scheduler")
     def process(check):
-        telescope = BaseResponse.telescope
-        dome = BaseResponse.dome
-        camera = BaseResponse.camera
+        scheduler = StopAll.scheduler
+        telescope = StopAll.telescope
+        dome = StopAll.dome
+        camera = StopAll.camera
+
+        try:
+            scheduler.stop()
+        except Exception, e:
+                # Todo: Log this exception somehow. I can't stop here. I need to make sure I try to close everything
+                pass
 
         if telescope.isTracking():
             try:
@@ -54,7 +62,7 @@ class UnparkTelescope(BaseResponse):
     @staticmethod
     @requires("telescope")
     def process(check):
-        telescope = BaseResponse.telescope
+        telescope = UnparkTelescope.telescope
 
         telescope.unpark()
 
@@ -63,7 +71,7 @@ class ParkTelescope(BaseResponse):
     @staticmethod
     @requires("telescope")
     def process(check):
-        telescope = BaseResponse.telescope
+        telescope = ParkTelescope.telescope
 
         telescope.park()
 
@@ -72,18 +80,36 @@ class OpenDome(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = BaseResponse.dome
+        dome = OpenDome.dome
 
-        dome.open()
+        dome.openSlit()
 
 class CloseDome(BaseResponse):
 
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = BaseResponse.dome
+        dome = CloseDome.dome
 
-        dome.close()
+        dome.closeSlit()
+
+class StartDomeFan(BaseResponse):
+
+    @staticmethod
+    @requires("domefan")
+    def process(check):
+        domefan = StartDomeFan.domefan
+
+        domefan.startFan()
+
+class StopDomeFan(BaseResponse):
+
+    @staticmethod
+    @requires("domefan")
+    def process(check):
+        domefan = StartDomeFan.domefan
+
+        domefan.stopFan()
 
 class ExecuteScript(BaseResponse):
 
@@ -97,7 +123,7 @@ class ExecuteScript(BaseResponse):
 class SendTelegram(BaseResponse):
 
     @staticmethod
-    @requires("manager")
+    #@requires("manager")
     def process(check):
         manager = BaseResponse.manager
 

@@ -1,4 +1,3 @@
-# This is an example of an simple instrument.
 
 import os
 
@@ -23,6 +22,9 @@ class Supervisor(ChimeraObject):
                     "telescope"  : "/Telescope/0",
                     "camera"     : "/Camera/0",
                     "dome"       : "/Dome/0",
+                    "scheduler"  : None,
+                    "domefan"    : None,
+                    "weatherstation" : None,
                     "telegram-ip": None,       # Telegram host IP
                     "telegram-port": None,     # Telegram host port
                     "telegram-timeout": None,  # Telegram host timeout
@@ -123,6 +125,7 @@ class Supervisor(ChimeraObject):
                                                              "supervisor.log"))
 
         # self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s.%(msecs)d %(origin)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s'))
+        self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s[%(levelname)8s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s'))
         self._log_handler.setLevel(logging.DEBUG)
         self.log.addHandler(self._log_handler)
 
@@ -181,5 +184,5 @@ class Supervisor(ChimeraObject):
 
 
     @event
-    def itemResponseComplete(self,item,response):
+    def itemResponseComplete(self,item,response,status):
         pass

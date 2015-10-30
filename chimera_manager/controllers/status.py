@@ -2,15 +2,21 @@ from chimera.util.enum import Enum
 
 OperationStatus = Enum("DAYTIME_IDLE",
                        "NIGHTTIME_IDLE",
-                       "OPERATING",
+                       "DAYTIME_OPERATING",
+                       "NIGHTTIME_OPERATING",
                        "WEATHER_CLOSED",
                        "NETWORK_CLOSED",
                        "TECHNICAL_CLOSED",
-                       "CLOSED")
+                       "UNSPECIFIED_CLOSED")
 
-FlagStatus = Enum("UNSET",
+FlagStatus = Enum("UNKNOWN",
+                  "UNSET",
                   "OK",
                   "WARNING",
                   "ALERT",
                   "ABORTED",
                   "ERROR")
+
+ResponseStatus = Enum("OK",
+                      "ERROR",
+                      "ABORTED")

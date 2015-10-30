@@ -11,7 +11,7 @@ import logging
 
 import time
 
-log = logging.getLogger(__name__.replace("_manager",".supervisor"))
+# log = logging.getLogger(__name__.replace("_manager",".supervisor"))
 
 class Machine(threading.Thread):
 
@@ -24,7 +24,8 @@ class Machine(threading.Thread):
 
         self.checklist = checklist
         self.controller = controller
-
+        self.log = controller.log
+        
         self.setDaemon(False)
 
     def state(self, state=None):
@@ -33,14 +34,14 @@ class Machine(threading.Thread):
             if not state: return self.__state
             if state == self.__state: return
             self.controller.statusChanged(state, self.__state)
-            log.debug("Changing state, from %s to %s." % (self.__state, state))
+            self.log.debug("Changing state, from %s to %s." % (self.__state, state))
             self.__state = state
             self.wakeup()
         finally:
             self.__stateLock.release()
 
     def run(self):
-        log.info("Starting manager machine")
+        self.log.info("Starting manager machine")
         self.state(State.IDLE)
 
         # inject instruments on handlers
@@ -49,46 +50,46 @@ class Machine(threading.Thread):
         while self.state() != State.SHUTDOWN:
 
             if self.state() == State.OFF:
-                log.debug("[off] will just sleep..")
+                self.log.debug("[off] will just sleep..")
                 self.sleep()
 
             if self.state() == State.START:
-                log.debug("[start] running checklist...")
+                self.log.debug("[start] running checklist...")
 
                 # Run checklist
                 self.state(State.BUSY)
                 self._process()
 
             elif self.state() == State.IDLE:
-                log.debug("[idle] waiting for wake-up call..")
+                self.log.debug("[idle] waiting for wake-up call..")
                 self.sleep()
 
             elif self.state() == State.BUSY:
-                log.debug("[busy] waiting tasks to finish..")
+                self.log.debug("[busy] waiting tasks to finish..")
                 self.sleep()
 
             elif self.state() == State.STOP:
-                log.debug("[stop] trying to stop current program")
+                self.log.debug("[stop] trying to stop current program")
                 self.checklist.mustStop.set()
                 self.state(State.OFF)
 
             elif self.state() == State.SHUTDOWN:
-                log.debug("[shutdown] trying to stop current program")
+                self.log.debug("[shutdown] trying to stop current program")
                 self.checklist.mustStop.set()
-                log.debug("[shutdown] should die soon.")
+                self.log.debug("[shutdown] should die soon.")
                 break
 
-        log.debug('[shutdown] thread ending...')
+        self.log.debug('[shutdown] thread ending...')
 
     def sleep(self):
         self.__wakeUpCall.acquire()
-        log.debug("Sleeping")
+        self.log.debug("Sleeping")
         self.__wakeUpCall.wait()
         self.__wakeUpCall.release()
 
     def wakeup(self):
         self.__wakeUpCall.acquire()
-        log.debug("Waking up")
+        self.log.debug("Waking up")
         self.__wakeUpCall.notifyAll()
         self.__wakeUpCall.release()
 
@@ -103,22 +104,22 @@ class Machine(threading.Thread):
             try:
                 checklist = session.query(List)
             except Exception, e:
-                log.exception(e)
+                self.log.exception(e)
                 self.state(State.OFF)
                 return
 
-            log.debug("[start] processing %i items" % checklist.count())
+            self.log.debug("[start] processing %i items" % checklist.count())
 
             for item in checklist:
                 try:
-                    log.debug("[start] Checking %s"%item)
+                    self.log.debug("[start] Checking %s"%item)
                     self.checklist.check(item)
                 except CheckAborted:
                     self.state(State.OFF)
-                    log.debug("[aborted by user] %s" % str(item))
+                    self.log.debug("[aborted by user] %s" % str(item))
                     break
                 except Exception, e:
-                    log.exception(e)
+                    self.log.exception(e)
                     pass
             session.commit()
             self.state(State.IDLE)

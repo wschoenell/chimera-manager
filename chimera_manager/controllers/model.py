@@ -15,10 +15,11 @@ Base = declarative_base(metadata=metaData)
 class List(Base):
     __tablename__ = "list"
     id         = Column(Integer, primary_key=True)
-    status     = Column(Boolean, default=False) # check status.FlagStatus
+    status     = Column(Integer, default=0) # The status flag id
+    active     = Column(Boolean, default=True) # is item active (included in check routine)?
     lastUpdate = Column(DateTime, default=None)
+    lastChange = Column(DateTime, default=None)
     name       = Column(String,default=None)
-
     eager      = Column(Boolean, default=False) # Run response every time. Normal operation is run
                                                 # only when status change
 
@@ -82,13 +83,52 @@ class CheckTemperature(Check):
     __mapper_args__ = {'polymorphic_identity': 'CheckTemperature'}
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
-    temperature = Column(Float, default=0.0) # The desired temperature
+    temperature = Column(Float, default=0.0) # The desired temperature in Celsius
 
     def __init__(self, temperature):
         self.temperature= float(temperature)
 
     def __str__ (self):
         return "checktemperature: threshold %.2f " % (self.temperature)
+
+class CheckWindSpeed(Check):
+    __tablename__ = "checkwindspeed"
+    __mapper_args__ = {'polymorphic_identity': 'CheckWindSpeed'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    windspeed = Column(Float, default=0.0) # The desired wind speed in m/s
+
+    def __init__(self, windspeed):
+        self.windspeed= float(windspeed)
+
+    def __str__ (self):
+        return "checkwindspeed: threshold %.2f " % (self.windspeed)
+
+class CheckDewPoint(Check):
+    __tablename__ = "checkdewpoint"
+    __mapper_args__ = {'polymorphic_identity': 'CheckDewPoint'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    dewpoint = Column(Float, default=0.0) # The desired dewpoint in Celsius
+
+    def __init__(self, dewpoint):
+        self.dewpoint= float(dewpoint)
+
+    def __str__ (self):
+        return "checkdewpoint: threshold %.2f " % (self.dewpoint)
+
+class CheckDew(Check):
+    __tablename__ = "checkdew"
+    __mapper_args__ = {'polymorphic_identity': 'CheckDew'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    tempdiff = Column(Float, default=0.0) # The desired difference in temperature and dew point
+
+    def __init__(self, tempdiff):
+        self.tempdiff= float(tempdiff)
+
+    def __str__ (self):
+        return "checkdew: threshold %.2f " % (self.tempdiff)
 
 class Response(Base):
     __tablename__ = "response"
@@ -97,6 +137,9 @@ class Response(Base):
     list_id = Column(Integer, ForeignKey("list.id"))
 
     response_type = Column(String(100))
+
+    def __str__(self):
+        return "%s"%self.response_type
 
     # __mapper_args__ = {'polymorphic_on': response_type}
 
