@@ -143,6 +143,14 @@ class CheckList(object):
         if not (issubclass(handler, CheckHandler) or issubclass(handler, baseresponse.BaseResponse)):
             return
 
+        if issubclass(handler, baseresponse.BaseResponse):
+            try:
+                setattr(handler, "manager",
+                            self.controller.getManager().getProxy(self.controller.getLocation()))
+            except Exception, e:
+                self.log.error("Could not inject `manager` to %s response"%(handler))
+                self.log.exception(e)
+
         if not hasattr(handler.process, "__requires__"):
             return
 

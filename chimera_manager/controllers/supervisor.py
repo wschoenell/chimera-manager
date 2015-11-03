@@ -3,7 +3,7 @@ import os
 
 from chimera_manager.controllers.machine import Machine
 from chimera_manager.controllers.checklist import CheckList
-from chimera_manager.controllers.status import OperationStatus
+from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
 from chimera_manager.controllers.states import State
 
 from chimera.core.chimeraobject import ChimeraObject
@@ -34,7 +34,15 @@ class Supervisor(ChimeraObject):
     def __init__(self):
         ChimeraObject.__init__(self)
 
-        self._operationStatus = None
+        self._operationStatus = {
+                                 "site":            InstrumentOperationFlag.UNSET,
+                                 "telescope":       InstrumentOperationFlag.UNSET,
+                                 "camera":          InstrumentOperationFlag.UNSET,
+                                 "dome":            InstrumentOperationFlag.UNSET,
+                                 "scheduler":       InstrumentOperationFlag.UNSET,
+                                 "domefan":         InstrumentOperationFlag.UNSET,
+                                 "weatherstation":  InstrumentOperationFlag.UNSET,
+                                 }
 
         self._telegramBroadcast = False
         self._telegramSocket = None
@@ -55,6 +63,16 @@ class Supervisor(ChimeraObject):
 
         self.checklist = CheckList(self)
         self.machine = Machine(self.checklist, self)
+
+        # Connect to telescope events
+        self._connectTelescopeEvents()
+
+        # Connect to dome events
+        self._connectDomeEvents()
+
+        # Connect to scheduler events
+        self._connectSchedulerEvents()
+
 
         self.setHz(self["freq"])
 
@@ -150,6 +168,56 @@ class Supervisor(ChimeraObject):
 
     def getResponses(self):
         return self.checklist.responseList
+
+    def getInstrumentList(self):
+        return self._operationStatus.keys()
+
+    def setFlag(self,instrument,flag):
+        self._operationStatus[instrument] = flag
+
+    def getFlag(self,instrument):
+        return self._operationStatus[instrument]
+
+    def canOpen(self,instrument=None):
+        """
+        Checks if open operation are allowed in general or for a particular instrument. If none is given will only
+        allow if all instruments have the open flag. Otherwise will check the instrument and site.
+
+        :return:
+        """
+
+        if instrument is None:
+            flag = True
+            for inst_ in self._operationStatus.keys():
+                flag = flag and (self.getFlag(inst_) == InstrumentOperationFlag.OPEN)
+            return flag
+        else:
+            return (self.getFlag(instrument) == InstrumentOperationFlag.OPEN) and (self.getFlag("site") == InstrumentOperationFlag.OPEN)
+
+
+    def _connectTelescopeEvents(self):
+        # Todo
+        pass
+
+    def _disconnectTelescopeEvents(self):
+        # Todo
+        pass
+
+    def _connectDomeEvents(self):
+        # Todo
+        pass
+
+    def _disconnectDomeEvents(self):
+        # Todo
+        pass
+
+    def _connectSchedulerEvents(self):
+        # Todo
+        pass
+
+    def _disconnectSchedulerEvents(self):
+        # Todo
+        pass
 
     @lock
     def status(self,new=None):

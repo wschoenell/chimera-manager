@@ -169,6 +169,32 @@ class Manager(ChimeraCLI):
 
     ############################################################################
 
+
+    @action(help="Print manager information and exit", helpGroup="INFO")
+    def info(self, options):
+        manager = self.supervisor
+
+        self.out("=" * 40)
+        self.out("Manager: %s." % (manager.getLocation()))
+
+        self.out("General status:")
+        for inst_ in manager.getInstrumentList():
+            self.out("- %s: %s"%(inst_,
+                                 manager.getFlag(inst_)))
+        self.out("=" * 40)
+
+        session = Session()
+
+        checklist = session.query(List)
+
+        self.out("There are currently %i items in check list"%(checklist.count()))
+
+        for item in checklist:
+            self.out("- %s"%item)
+        self.out("=" * 40)
+
+    ############################################################################
+
     @action(help="Start manager", helpGroup="RUN", actionGroup="RUN")
     def start(self, options):
 

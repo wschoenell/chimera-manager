@@ -7,6 +7,7 @@ as long as they inherit the Response class.
 import os
 import subprocess
 from chimera_manager.controllers.handlers import requires
+from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
 
 class BaseResponse(object):
 
@@ -22,12 +23,14 @@ class StopAll(BaseResponse):
     @requires("camera")
     @requires("scheduler")
     def process(check):
+        manager = StopAll.manager
         scheduler = StopAll.scheduler
         telescope = StopAll.telescope
         dome = StopAll.dome
         camera = StopAll.camera
 
         try:
+            manager.setFlag("scheduler",IOFlag.CLOSE)
             scheduler.stop()
         except Exception, e:
                 # Todo: Log this exception somehow. I can't stop here. I need to make sure I try to close everything
@@ -44,6 +47,7 @@ class StopAll(BaseResponse):
                 # raise Exception
 
         try:
+            manager.setFlag("telescope",IOFlag.CLOSE)
             telescope.closeCover()
         except NotImplementedError, e:
             pass
@@ -52,9 +56,11 @@ class StopAll(BaseResponse):
             pass
             # raise Exception
 
+        manager.setFlag("dome",IOFlag.CLOSE)
         dome.stand()
         dome.close()
 
+        manager.setFlag("camera",IOFlag.CLOSE)
         camera.abortExposure(readout=False)
 
 class UnparkTelescope(BaseResponse):
@@ -81,8 +87,11 @@ class OpenDome(BaseResponse):
     @requires("dome")
     def process(check):
         dome = OpenDome.dome
+        manager = OpenDome.manager
 
-        dome.openSlit()
+        # Check if dome can be opened
+        if manager.canOpen():
+            dome.openSlit()
 
 class CloseDome(BaseResponse):
 
@@ -90,7 +99,9 @@ class CloseDome(BaseResponse):
     @requires("dome")
     def process(check):
         dome = CloseDome.dome
+        # manager = CloseDome.manager
 
+        # manager.setFlag("dome",IOFlag.CLOSE)
         dome.closeSlit()
 
 class StartDomeFan(BaseResponse):
@@ -99,8 +110,11 @@ class StartDomeFan(BaseResponse):
     @requires("domefan")
     def process(check):
         domefan = StartDomeFan.domefan
+        manager = OpenDome.manager
 
-        domefan.startFan()
+        # Check if domefan can be opened
+        if manager.getFlag("domefan") == IOFlag.OPEN:
+            domefan.startFan()
 
 class StopDomeFan(BaseResponse):
 
