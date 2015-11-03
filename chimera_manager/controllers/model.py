@@ -1,4 +1,4 @@
-from chimera.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
 
 from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
                         Float, PickleType, MetaData, create_engine)
@@ -11,6 +11,15 @@ metaData.bind = engine
 
 Session = sessionmaker(bind=engine)
 Base = declarative_base(metadata=metaData)
+
+class InstrumentOperationStatus(Base):
+    __tablename__ = "iostatus"
+    id = Column(Integer, primary_key=True)
+    instrument = Column(String, default=None)
+    status = Column(Integer, default=None)
+    key = Column(String, default=None) # this is a self generated key to lock an instrument. Use it to unlock
+    lastUpdate = Column(DateTime, default=None)
+    lastChange = Column(DateTime, default=None)
 
 class List(Base):
     __tablename__ = "list"
@@ -143,4 +152,14 @@ class Response(Base):
 
     # __mapper_args__ = {'polymorphic_on': response_type}
 
+class ResponseLock(Base):
+    __tablename__ = "responselock"
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    instrument = Column(String)
+    key = Column(String)
+
+    def __str__(self):
+        return "ResponseLock: instrument(%s) key(%s)"%(self.instrument,
+                                                       self.key)
 metaData.create_all(engine)

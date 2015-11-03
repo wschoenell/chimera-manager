@@ -6,3 +6,6 @@ class CheckAborted(ChimeraException):
 
 class CheckExecutionException(ChimeraException):
     pass
+
+class StatusUpdateException(ChimeraException):
+    pass

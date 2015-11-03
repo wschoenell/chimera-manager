@@ -5,6 +5,7 @@ from chimera_manager.controllers.machine import Machine
 from chimera_manager.controllers.checklist import CheckList
 from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
 from chimera_manager.controllers.states import State
+from chimera_manager.core.exceptions import StatusUpdateException
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.lock import lock
@@ -72,7 +73,6 @@ class Supervisor(ChimeraObject):
 
         # Connect to scheduler events
         self._connectSchedulerEvents()
-
 
         self.setHz(self["freq"])
 
@@ -172,8 +172,18 @@ class Supervisor(ChimeraObject):
     def getInstrumentList(self):
         return self._operationStatus.keys()
 
-    def setFlag(self,instrument,flag):
-        self._operationStatus[instrument] = flag
+    def setFlag(self, instrument, flag, updatedb= True):
+        if updatedb:
+            if self.checklist.updateInstrumentStatus(instrument,flag):
+                self._operationStatus[instrument] = flag
+            else:
+                raise StatusUpdateException("Could not update %s status with flag %s"%(instrument,
+                                                                                       flag))
+        elif flag != InstrumentOperationFlag.LOCK and self.checklist.getInstrumentStatus(instrument) != InstrumentOperationFlag.LOCK:
+            self._operationStatus[instrument] = flag
+        else:
+            raise StatusUpdateException("Could not update %s status with flag %s"%(instrument,
+                                                                                       flag))
 
     def getFlag(self,instrument):
         return self._operationStatus[instrument]
@@ -194,6 +204,23 @@ class Supervisor(ChimeraObject):
         else:
             return (self.getFlag(instrument) == InstrumentOperationFlag.OPEN) and (self.getFlag("site") == InstrumentOperationFlag.OPEN)
 
+
+    def lockInstrument(self,instrument,key):
+
+        if self.checklist.updateInstrumentStatus(instrument,
+                                                 InstrumentOperationFlag.LOCK,
+                                                 key):
+            self._operationStatus[instrument] = InstrumentOperationFlag.LOCK
+        else:
+            self.log.warning("Could not change instrument status.")
+
+    def unlockInstrument(self,instrument,key):
+        if self.checklist.updateInstrumentStatus(instrument,
+                                                 InstrumentOperationFlag.CLOSE,
+                                                 key):
+            self._operationStatus[instrument] = InstrumentOperationFlag.CLOSE
+        else:
+            raise StatusUpdateException("Unable to unlock %s with provided key"%(instrument))
 
     def _connectTelescopeEvents(self):
         # Todo

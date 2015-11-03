@@ -1,14 +1,14 @@
 
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
-                                               CheckDewPoint, CheckDew,
+                                               CheckDewPoint, CheckDew, InstrumentOperationStatus,
                                                Response)
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler,
                                                   WindSpeedHandler, DewPointHandler,
                                                   DewHandler)
 from chimera_manager.controllers import baseresponse
-from chimera_manager.controllers.status import FlagStatus, ResponseStatus
+from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
 from chimera.core.exceptions import ObjectNotFoundException
 from chimera_manager.core.exceptions import CheckAborted,CheckExecutionException
@@ -65,6 +65,24 @@ class CheckList(object):
             self._injectInstrument(handler)
 
         # Todo: Configure user-defined responses
+
+        # Read instrument status flag from database
+        session = Session()
+        for inst_ in self.controller.getInstrumentList():
+            status = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == inst_)
+            if status.count() == 0:
+                self.log.warning("No %s intrument on database. Adding with status UNSET."%inst_)
+                iostatus = InstrumentOperationStatus(instrument = inst_,
+                                                     status = InstrumentOperationFlag.UNSET.index,
+                                                     lastUpdate = self.controller.site().ut().replace(tzinfo=None),
+                                                     lastChange = self.controller.site().ut().replace(tzinfo=None))
+                session.add(iostatus)
+                session.commit()
+            else:
+                self.controller.setFlag(inst_,
+                                        InstrumentOperationFlag[status[0].status],
+                                        False)
+
 
         return
 
@@ -138,6 +156,29 @@ class CheckList(object):
             finally:
                 self.log.debug("[finish] took: %f s" % (time.time() - t0))
 
+    def updateInstrumentStatus(self,instrument,status,key=None):
+        session = Session()
+        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
+
+        if iostatus.status != InstrumentOperationStatus.LOCK:
+            iostatus.status = status
+            if key is not None:
+                iostatus.key = key
+        elif key == iostatus.key:
+            iostatus.status = status
+            if status != InstrumentOperationStatus.LOCK:
+                iostatus.key = ""
+        else:
+            return False
+
+        session.commit()
+        return True
+
+    def getInstrumentStatus(self,instrument):
+        session = Session()
+        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
+
+        return InstrumentOperationFlag[iostatus[0].status]
 
     def _injectInstrument(self, handler):
         if not (issubclass(handler, CheckHandler) or issubclass(handler, baseresponse.BaseResponse)):

@@ -16,9 +16,9 @@ import re
 from chimera.core.cli import ChimeraCLI, action
 from chimera.core.callback import callback
 from chimera.util.output import blue, green, red
-from chimera.core.constants import DEFAULT_PROGRAM_DATABASE
-from chimera.controllers.scheduler.model import Session
 
+from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera_manager.controllers.model import Session
 from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
 
 ################################################################################

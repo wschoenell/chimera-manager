@@ -125,6 +125,22 @@ class StopDomeFan(BaseResponse):
 
         domefan.stopFan()
 
+class LockInstrument(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = LockInstrument.manager
+
+        manager.lockInstrument(check.instrument,
+                               check.key)
+
+class UnlockInstrument(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = UnlockInstrument.manager
+
+        manager.unlockInstrument(check.instrument,
+                                 check.key)
+
 class ExecuteScript(BaseResponse):
 
     @staticmethod
