@@ -1,8 +1,11 @@
 
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
-                                               CheckDewPoint, CheckDew, InstrumentOperationStatus,
+                                               CheckDewPoint, CheckDew,
                                                Response)
+from chimera_manager.controllers.iostatus_model import Session as ioSession
+from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
+
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler,
                                                   WindSpeedHandler, DewPointHandler,
@@ -67,7 +70,7 @@ class CheckList(object):
         # Todo: Configure user-defined responses
 
         # Read instrument status flag from database
-        session = Session()
+        session = ioSession()
         for inst_ in self.controller.getInstrumentList():
             status = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == inst_)
             if status.count() == 0:
@@ -125,11 +128,11 @@ class CheckList(object):
                     for response in item.response:
                         response_status = ResponseStatus.OK
                         try:
-                            self.currentResponse = self.responseList[response.response_type]
+                            self.currentResponse = self.responseList[response.response_id]
                             self.controller.itemResponseBegin(item,self.currentResponse)
                             self.currentResponse.process(response)
                         except KeyError:
-                            self.log.debug("No handler to response %s. Skipping it" % response)
+                            self.log.debug("No handler to response %s. Skipping it" % response.response_id)
                             response_status = ResponseStatus.ERROR
                         except Exception, e:
                             self.log.exception(e)
@@ -157,16 +160,17 @@ class CheckList(object):
                 self.log.debug("[finish] took: %f s" % (time.time() - t0))
 
     def updateInstrumentStatus(self,instrument,status,key=None):
-        session = Session()
-        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
+        session = ioSession()
+        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
+        session.commit()
 
-        if iostatus.status != InstrumentOperationStatus.LOCK:
-            iostatus.status = status
+        if iostatus.status != InstrumentOperationFlag.LOCK.index:
+            iostatus.status = status.index
             if key is not None:
                 iostatus.key = key
         elif key == iostatus.key:
-            iostatus.status = status
-            if status != InstrumentOperationStatus.LOCK:
+            iostatus.status = status.index
+            if status != InstrumentOperationFlag.LOCK:
                 iostatus.key = ""
         else:
             return False
@@ -175,7 +179,7 @@ class CheckList(object):
         return True
 
     def getInstrumentStatus(self,instrument):
-        session = Session()
+        session = ioSession()
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
 
         return InstrumentOperationFlag[iostatus[0].status]

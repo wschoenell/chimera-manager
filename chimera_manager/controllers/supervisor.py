@@ -6,10 +6,10 @@ from chimera_manager.controllers.checklist import CheckList
 from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
 from chimera_manager.controllers.states import State
 from chimera_manager.core.exceptions import StatusUpdateException
+from chimera_manager.core.constants import SYSTEM_CONFIG_DIRECTORY
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.lock import lock
-from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.event import event
 from chimera.core.log import fmt
 
@@ -88,7 +88,7 @@ class Supervisor(ChimeraObject):
 
     def control(self):
 
-        self.log.debug('[control] current status is "%s"'%(self._operationStatus))
+        self.log.debug('[control] current status is "%s"'%(self._operationStatus["site"]))
 
         if self.machine.state() == State.IDLE:
             self.machine.state(State.START)
@@ -101,6 +101,20 @@ class Supervisor(ChimeraObject):
 
         return True
 
+
+    def start(self):
+        if self.machine.state() == State.OFF:
+            self.machine.state(State.IDLE)
+            return True
+        else:
+            return False
+
+    def stop(self):
+        if self.machine.state() != State.OFF:
+            self.machine.state(State.STOP)
+            return True
+        else:
+            return False
 
     def connectTelegram(self):
 
@@ -179,11 +193,8 @@ class Supervisor(ChimeraObject):
             else:
                 raise StatusUpdateException("Could not update %s status with flag %s"%(instrument,
                                                                                        flag))
-        elif flag != InstrumentOperationFlag.LOCK and self.checklist.getInstrumentStatus(instrument) != InstrumentOperationFlag.LOCK:
-            self._operationStatus[instrument] = flag
         else:
-            raise StatusUpdateException("Could not update %s status with flag %s"%(instrument,
-                                                                                       flag))
+            self._operationStatus[instrument] = flag
 
     def getFlag(self,instrument):
         return self._operationStatus[instrument]

@@ -6,20 +6,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
 
 engine = create_engine('sqlite:///%s' % DEFAULT_PROGRAM_DATABASE, echo=False)
+
 metaData = MetaData()
 metaData.bind = engine
 
 Session = sessionmaker(bind=engine)
 Base = declarative_base(metadata=metaData)
-
-class InstrumentOperationStatus(Base):
-    __tablename__ = "iostatus"
-    id = Column(Integer, primary_key=True)
-    instrument = Column(String, default=None)
-    status = Column(Integer, default=None)
-    key = Column(String, default=None) # this is a self generated key to lock an instrument. Use it to unlock
-    lastUpdate = Column(DateTime, default=None)
-    lastChange = Column(DateTime, default=None)
 
 class List(Base):
     __tablename__ = "list"
@@ -144,22 +136,77 @@ class Response(Base):
 
     id         = Column(Integer, primary_key=True)
     list_id = Column(Integer, ForeignKey("list.id"))
+    response_id = Column(String)
 
     response_type = Column(String(100))
+    __mapper_args__ = {'polymorphic_on': response_type}
 
     def __str__(self):
         return "%s"%self.response_type
 
     # __mapper_args__ = {'polymorphic_on': response_type}
 
-class ResponseLock(Base):
-    __tablename__ = "responselock"
+class BaseResponse(Response):
+    __tablename__ = "baseresponse"
+    __mapper_args__ = {'polymorphic_identity': 'BaseResponse'}
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+
+    def __init__(self, response_id):
+        self.response_id = response_id
+
+    def __str__(self):
+        return "%s"%self.response_id
+
+class LockInstrument(Response):
+    __tablename__ = 'lockinstrument'
+    __mapper_args__ = {'polymorphic_identity': 'LockInstrument'}
 
     id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
     instrument = Column(String)
     key = Column(String)
 
+    def __init__(self, instrument, key):
+        self.response_id = self.__tablename__.upper()
+        self.instrument = instrument
+        self.key = key
+
     def __str__(self):
-        return "ResponseLock: instrument(%s) key(%s)"%(self.instrument,
-                                                       self.key)
+        return "Lock: instrument(%s) key(%s)" % (self.instrument,
+                                                 self.key)
+
+class UnlockInstrument(Response):
+    __tablename__ = 'unlockinstrument'
+    __mapper_args__ = {'polymorphic_identity': 'UnlockInstrument'}
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    instrument = Column(String)
+    key = Column(String)
+
+    def __init__(self, instrument, key):
+        self.response_id = self.__tablename__.upper()
+        self.instrument = instrument
+        self.key = key
+
+    def __str__(self):
+        return "Unlock: instrument(%s) key(%s)" % (self.instrument,
+                                                   self.key)
+
+class SetInstrumentFlag(Response):
+    __tablename__ = "setinstrumentflag"
+    __mapper_args__ = {'polymorphic_identity': 'SetInstrumentFlag'}
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    instrument = Column(String)
+    flag = Column(Integer)
+
+    def __init__(self,instrument,flag):
+        self.response_id = self.__tablename__.upper()
+        self.instrument = instrument
+        self.flag = int(flag)
+
+    def __str__(self):
+        return "SetFlag: instrument(%s) flag(%s)"%(self.instrument,
+                                                   self.flag)
+
 metaData.create_all(engine)

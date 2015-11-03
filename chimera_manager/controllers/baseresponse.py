@@ -8,12 +8,17 @@ import os
 import subprocess
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
+from chimera_manager.controllers import model
 
 class BaseResponse(object):
 
     @staticmethod
     def process(check):
         pass
+
+    @staticmethod
+    def model():
+        return model.BaseResponse
 
 class StopAll(BaseResponse):
 
@@ -102,7 +107,8 @@ class CloseDome(BaseResponse):
         # manager = CloseDome.manager
 
         # manager.setFlag("dome",IOFlag.CLOSE)
-        dome.closeSlit()
+        if dome.isSlitOpen():
+            dome.closeSlit()
 
 class StartDomeFan(BaseResponse):
 
@@ -133,6 +139,11 @@ class LockInstrument(BaseResponse):
         manager.lockInstrument(check.instrument,
                                check.key)
 
+    @staticmethod
+    def model():
+        return model.LockInstrument
+
+
 class UnlockInstrument(BaseResponse):
     @staticmethod
     def process(check):
@@ -140,6 +151,21 @@ class UnlockInstrument(BaseResponse):
 
         manager.unlockInstrument(check.instrument,
                                  check.key)
+
+    @staticmethod
+    def model():
+        return model.UnlockInstrument
+
+class SetInstrumentFlag(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = SetInstrumentFlag.manager
+
+        manager.setFlag(check.instrument,
+                        check.flag)
+    @staticmethod
+    def model():
+        return model.SetInstrumentFlag
 
 class ExecuteScript(BaseResponse):
 

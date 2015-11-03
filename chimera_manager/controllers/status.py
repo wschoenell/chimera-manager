@@ -5,7 +5,7 @@ from chimera.util.enum import Enum
 InstrumentOperationFlag = Enum( "UNSET",    # No info about instrument operation condition
                                 "OPEN",     # Instrument can open and operate normally
                                 "CLOSE",    # Instrument should be closed and must not be operated
-                                "LOCKED",   # Instrument was locked. It will require a key to unlock
+                                "LOCK",   # Instrument was locked. It will require a key to unlock
                                             # (known to the one that locked it).
                                 "ERROR"     # Instrument in error. Operation condition is uncertain
                                 )
