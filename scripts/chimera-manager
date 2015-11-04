@@ -341,7 +341,7 @@ class Manager(ChimeraCLI):
 
         manager = self.supervisor
 
-        if flag == InstrumentOperationFlag.OPEN:
+        if flag == InstrumentOperationFlag.READY or flag == InstrumentOperationFlag.OPERATING:
             return green('%s'%flag)
         elif flag == InstrumentOperationFlag.UNSET:
             return blue('%s'%flag)

@@ -2,12 +2,13 @@ from collections import namedtuple
 
 from chimera.util.enum import Enum
 
-InstrumentOperationFlag = Enum( "UNSET",    # No info about instrument operation condition
-                                "OPEN",     # Instrument can open and operate normally
-                                "CLOSE",    # Instrument should be closed and must not be operated
-                                "LOCK",   # Instrument was locked. It will require a key to unlock
-                                            # (known to the one that locked it).
-                                "ERROR"     # Instrument in error. Operation condition is uncertain
+InstrumentOperationFlag = Enum("UNSET",      # No info about instrument operation condition
+                               "READY",      # Instrument can open and operate normally
+                               "OPERATING",  # Instrument was instanciated by manager and should be operating
+                               "CLOSE",      # Instrument should be closed and must not be operated
+                               "LOCK",       # Instrument was locked. It will require a key to unlock
+                                             # (known to the one that locked it).
+                               "ERROR"       # Instrument in error. Operation condition is uncertain
                                 )
 
 OperationStatus = Enum("DAYTIME_IDLE",

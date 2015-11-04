@@ -1,3 +1,4 @@
+from datetime import timedelta as td
 
 def requires(instrument):
     """Simple dependecy injection mechanism. See ProgramExecutor"""
@@ -80,15 +81,39 @@ class HumidityHandler(CheckHandler):
     Process will return True if humidity is above specified threshold  or False, otherwise.
     '''
     @staticmethod
+    @requires("site")
     @requires("weatherstation")
     def process(check):
         weatherstation = HumidityHandler.weatherstation
+        site = HumidityHandler.site
 
         humidity = weatherstation.humidity()
-        ret = check.humidity < humidity.value
-        msg = "Humidity OK (%.2f/%.2f)"%(humidity.value,check.humidity) if not ret \
-            else "Humidity higher than specified threshold (%.2f/%.2f)"%(humidity.value,check.humidity)
-        return ret, msg
+        if check.mode == 0: # True if value is higher
+            ret = check.humidity < humidity.value
+            msg = "Humidity OK (%.2f/%.2f)"%(humidity.value,check.humidity) if not ret \
+                else "Humidity higher than specified threshold (%.2f/%.2f)"%(humidity.value,check.humidity)
+            if ret:
+                check.time = site.ut().replace(tzinfo=None)
+            return ret, msg
+        elif check.mode == 1: # True if value is lower for more than the specified number of hours
+            ret = check.humidity > humidity.value
+            msg = "Nothing to do. Humidity higher than threshold (%.2f/%.2f)."%(humidity.value,check.humidity) if not ret \
+                else "Humidity lower than threshold (%.2f/%.2f)."%(humidity.value,check.humidity)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + td(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret,msg
 
     @staticmethod
     def log(check):

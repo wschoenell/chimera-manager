@@ -210,10 +210,11 @@ class Supervisor(ChimeraObject):
         if instrument is None:
             flag = True
             for inst_ in self._operationStatus.keys():
-                flag = flag and (self.getFlag(inst_) == InstrumentOperationFlag.OPEN)
+                flag = flag and (self.getFlag(inst_) == InstrumentOperationFlag.READY)
             return flag
         else:
-            return (self.getFlag(instrument) == InstrumentOperationFlag.OPEN) and (self.getFlag("site") == InstrumentOperationFlag.OPEN)
+            return (self.getFlag(instrument) == InstrumentOperationFlag.READY) and \
+                   (self.getFlag("site") == InstrumentOperationFlag.READY)
 
 
     def lockInstrument(self,instrument,key):
@@ -226,6 +227,11 @@ class Supervisor(ChimeraObject):
             self.log.warning("Could not change instrument status.")
 
     def unlockInstrument(self,instrument,key):
+
+        if self.getFlag(instrument) != InstrumentOperationFlag.LOCK:
+            self.log.debug("Instrument not locked")
+            return
+
         if self.checklist.updateInstrumentStatus(instrument,
                                                  InstrumentOperationFlag.CLOSE,
                                                  key):

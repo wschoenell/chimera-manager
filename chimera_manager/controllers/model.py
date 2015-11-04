@@ -71,10 +71,17 @@ class CheckHumidity(Check):
     __mapper_args__ = {'polymorphic_identity': 'CheckHumidity'}
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
-    humidity = Column(Float, default=0.0) # The desired humidity
+    humidity = Column(Float, default=0.0)  # The desired humidity
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, humidity):
+    def __init__(self, humidity,deltaTime=0.,mode=0):
         self.humidity= float(humidity)
+        self.deltaTime= deltaTime
+        self.mode= mode
 
     def __str__ (self):
         return "checkhumidity: threshold %.2f " % (self.humidity)
