@@ -1,4 +1,4 @@
-from datetime import timedelta as td
+import datetime
 
 def requires(instrument):
     """Simple dependecy injection mechanism. See ProgramExecutor"""
@@ -28,13 +28,16 @@ class CheckHandler(object):
 
 class TimeHandler(CheckHandler):
     '''
-    This class checks if the sun is above or bellow some altitude threshould and if it is rising or setting.
+    This class checks if now is before of after a specified time delta with respect to a specific sun event.
 
-    Return map is:
-    0 - Sun above threshould rising
-    1 - Sun above threshould setting
-    2 - Sun bellow threshould rising
-    3 - Sun bellow threshould setting
+    Available modes are
+    0 - Specify a reference time (in hours from ut = 0)
+    1 - Sun set (sun setting @ alt 0)
+    2 - Sun set twilight begin (sun setting @ alt -12)
+    3 - Sun set twilight end (sun setting @ alt -18)
+    4 - Sun rise (sun rising @ alt 0)
+    5 - Sun rise twilight begin (sun setting @ alt -12)
+    6 - Sun rise twilight end (sun setting @ alt -18)
 
     Process
     will return True if the
@@ -45,29 +48,26 @@ class TimeHandler(CheckHandler):
     def process(check):
         site = TimeHandler.site
 
-        # calculate mid day
-        sunrise = site.MJD(site.sunrise())
-        sunset = site.MJD(site.sunset())
-        mid = (sunrise+sunset)/2.
-        midnight = sunrise < sunset
-        now = site.MJD()
-
-        sun_pos = site.sunpos()
-
-        status = 0
-
-        if sun_pos.alt.D > check.sun_altitude:
-
-            if (midnight and mid < now) or (not midnight and mid > now):
-                return True if check.above and check.rising else False, "Sun above threshold rising"
-            else:
-                return True if check.above and not check.rising else False, "MJD: %f | Sun @ %s. Above threshold setting"%(now,sun_pos)
+        reftime = check.time
+        if check.mode == 1:
+            reftime = site.sunset()
+        elif check.mode == 2:
+            reftime = site.sunset_wilight_begin()
+        elif check.mode == 3:
+            reftime = site.sunset_twilight_end()
+        elif check.mode == 4:
+            reftime = site.sunrise()
+        elif check.mode == 5:
+            reftime = site.sunrise_twilight_begin()
+        elif check.mode == 6:
+            reftime = site.sunrise_twilight_end()
         else:
-            if (midnight and mid < now) or (not midnight and mid > now):
-                return True if not check.above and check.rising else False, "Sun bellow threshold rising"
-            else:
-                return True if not check.above and not check.rising else False, "Sun bellow threshold setting"
+            pass
 
+        if reftime is None:
+            return False,"Could not determined reference time."
+
+        
 
     @staticmethod
     def log(check):
@@ -103,7 +103,7 @@ class HumidityHandler(CheckHandler):
             if not ret:
                 check.time = site.ut().replace(tzinfo=None)
             elif check.time is not None:
-                ret = check.time + td(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
                 if ret:
                     msg += "Elapsed time ok"
                     check.time = site.ut().replace(tzinfo=None)
