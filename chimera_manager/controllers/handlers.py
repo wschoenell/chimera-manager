@@ -31,13 +31,14 @@ class TimeHandler(CheckHandler):
     This class checks if now is before of after a specified time delta with respect to a specific sun event.
 
     Available modes are
-    0 - Specify a reference time (in hours from ut = 0)
-    1 - Sun set (sun setting @ alt 0)
+    0 - Sun set (sun setting @ alt 0)
+    1 - Same as 0, but enable to choose before or after.
     2 - Sun set twilight begin (sun setting @ alt -12)
     3 - Sun set twilight end (sun setting @ alt -18)
     4 - Sun rise (sun rising @ alt 0)
     5 - Sun rise twilight begin (sun setting @ alt -12)
     6 - Sun rise twilight end (sun setting @ alt -18)
+   >6 - Specify a reference time (in hours from ut = 0)
 
     Process
     will return True if the
@@ -48,26 +49,39 @@ class TimeHandler(CheckHandler):
     def process(check):
         site = TimeHandler.site
 
-        reftime = check.time
-        if check.mode == 1:
+
+        reftime = None
+        if abs(check.mode) == 1 or check.mode == 0:
             reftime = site.sunset()
-        elif check.mode == 2:
+        elif abs(check.mode) == 2:
             reftime = site.sunset_wilight_begin()
-        elif check.mode == 3:
+        elif abs(check.mode) == 3:
             reftime = site.sunset_twilight_end()
-        elif check.mode == 4:
+        elif abs(check.mode) == 4:
             reftime = site.sunrise()
-        elif check.mode == 5:
+        elif abs(check.mode) == 5:
             reftime = site.sunrise_twilight_begin()
-        elif check.mode == 6:
+        elif abs(check.mode) == 6:
             reftime = site.sunrise_twilight_end()
         else:
-            pass
+            reftime = check.time
 
         if reftime is None:
             return False,"Could not determined reference time."
-
-        
+        elif check.mode >= 0:
+            reftime += check.deltaTime
+            ut = site.ut()
+            ret = ut > reftime
+            msg = "Reference time (%s) has passed. Now %s"%(reftime,ut) if ret else \
+                "Referemce time (%s) still in the future. Now %s"%(reftime,ut)
+            return ret,msg
+        else:
+            reftime += check.deltaTime
+            ut = site.ut()
+            ret = ut < reftime
+            msg = "Reference time (%s) still in the future. Now %s"%(reftime,ut) if ret else \
+                "Reference time (%s) has passed. Now %s"%(reftime,ut)
+            return ret,msg
 
     @staticmethod
     def log(check):

@@ -8,6 +8,7 @@ import os
 import subprocess
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
+from chimera_manager.core.exceptions import StatusUpdateException
 from chimera_manager.controllers import model
 
 class BaseResponse(object):
@@ -36,10 +37,15 @@ class StopAll(BaseResponse):
 
         try:
             manager.setFlag("scheduler",IOFlag.CLOSE)
+        except StatusUpdateException,e:
+            manager.broadCast(e)
+        except:
+            manager.broadCast(e)
+
+        try:
             scheduler.stop()
         except Exception, e:
-                # Todo: Log this exception somehow. I can't stop here. I need to make sure I try to close everything
-                pass
+            manager.broadCast(e)
 
         if telescope.isTracking():
             try:
@@ -47,9 +53,7 @@ class StopAll(BaseResponse):
             except NotImplementedError, e:
                 pass
             except Exception, e:
-                # Todo: Log this exception somehow. I can't stop here. I need to make sure I try to close everything
-                pass
-                # raise Exception
+                manager.broadCast(e)
 
         try:
             manager.setFlag("telescope",IOFlag.CLOSE)
@@ -57,8 +61,7 @@ class StopAll(BaseResponse):
         except NotImplementedError, e:
             pass
         except Exception, e:
-            # Todo: Log this exception somehow. I can't stop here. I need to make sure I try to close everything
-            pass
+            manager.broadCast(e)
             # raise Exception
 
         manager.setFlag("dome",IOFlag.CLOSE)
@@ -74,8 +77,12 @@ class UnparkTelescope(BaseResponse):
     @requires("telescope")
     def process(check):
         telescope = UnparkTelescope.telescope
+        manager = UnparkTelescope.manager
 
-        telescope.unpark()
+        try:
+            telescope.unpark()
+        except Exception, e:
+            manager.broadCast(e)
 
 class ParkTelescope(BaseResponse):
 
@@ -83,32 +90,107 @@ class ParkTelescope(BaseResponse):
     @requires("telescope")
     def process(check):
         telescope = ParkTelescope.telescope
+        manager = ParkTelescope.manager
 
-        telescope.park()
+        try:
+            telescope.park()
+        except Exception, e:
+            manager.broadCast(e)
 
-class OpenDome(BaseResponse):
+class OpenDomeSlit(BaseResponse):
 
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = OpenDome.dome
-        manager = OpenDome.manager
+        dome = OpenDomeSlit.dome
+        manager = OpenDomeSlit.manager
 
         # Check if dome can be opened
         if manager.canOpen():
-            dome.openSlit()
+            try:
+                manager.setFlag("dome",
+                                IOFlag.OPERATING)
 
-class CloseDome(BaseResponse):
+                # I will only try to open the slit if I can set the flag to operating
+                if not dome.isSlitOpen():
+                    dome.openSlit()
+
+            except StatusUpdateException, e:
+                manager.broadCast(e)
+            except Exception, e:
+                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                # Should I also try to close the slit?
+                manager.broadCast(e)
+                try:
+
+                    manager.setFlag("dome",
+                                    IOFlag.ERROR)
+
+                except:
+                    pass
+
+class OpenDomeFlap(BaseResponse):
 
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = CloseDome.dome
-        # manager = CloseDome.manager
+        dome = OpenDomeFlap.dome
+        manager = OpenDomeFlap.manager
 
-        # manager.setFlag("dome",IOFlag.CLOSE)
+        # Check if dome can be opened
+        if manager.canOpen():
+            try:
+                manager.setFlag("dome",
+                                IOFlag.OPERATING)
+
+                # I will only try to open the flap if I can set the flag to operating
+                if not dome.isFlapOpen():
+                    dome.openFlap()
+
+            except StatusUpdateException, e:
+                manager.broadCast(e)
+            except:
+                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.ERROR)
+                except:
+                    pass
+
+class CloseDomeSlit(BaseResponse):
+
+    @staticmethod
+    @requires("dome")
+    def process(check):
+        dome = CloseDomeSlit.dome
+        manager = CloseDomeSlit.manager
+
+        try:
+            manager.setFlag("dome",
+                            IOFlag.READY)
+        except StatusUpdateException, e:
+            manager.broadCast(e)
+        except Exception, e:
+            manager.broadCast(e)
+
+        # I will try to close the dome regardless of flag switching problems
         if dome.isSlitOpen():
             dome.closeSlit()
+
+class CloseDomeFlap(BaseResponse):
+
+    @staticmethod
+    @requires("dome")
+    def process(check):
+        dome = CloseDomeFlap.dome
+        manager = CloseDomeFlap.manager
+
+        # Dome may still be operating with Flap closed. Will close without any flap changes
+        if dome.isFlapOpen():
+            try:
+                dome.closeFlap()
+            except Exception, e:
+                manager.broadCast(e)
 
 class StartDomeFan(BaseResponse):
 
@@ -116,19 +198,28 @@ class StartDomeFan(BaseResponse):
     @requires("domefan")
     def process(check):
         domefan = StartDomeFan.domefan
-        manager = OpenDome.manager
+        manager = StartDomeFan.manager
 
         # Check if domefan can be opened
         if manager.getFlag("domefan") == IOFlag.OPEN:
-            domefan.startFan()
+            # Switch flag to OPERATING
+            manager.setFlag("domefan",IOFlag.OPERATING)
+            if not domefan.isFanRunning():
+                domefan.startFan()
 
 class StopDomeFan(BaseResponse):
 
     @staticmethod
     @requires("domefan")
     def process(check):
-        domefan = StartDomeFan.domefan
+        domefan = StopDomeFan.domefan
+        manager = StartDomeFan.manager
 
+        try:
+            manager.setFlag("domefan",
+                            IOFlag.OPEN)
+        except Exception, e:
+            manager.broadCast(e)
         domefan.stopFan()
 
 class LockInstrument(BaseResponse):
@@ -136,8 +227,13 @@ class LockInstrument(BaseResponse):
     def process(check):
         manager = LockInstrument.manager
 
-        manager.lockInstrument(check.instrument,
-                               check.key)
+        manager.broadCast('Locking %s with key %s' % (check.instrument,
+                                                      check.key))
+        try:
+            manager.lockInstrument(check.instrument,
+                                   check.key)
+        except Exception,e:
+            manager.broadCast(e)
 
     @staticmethod
     def model():

@@ -170,9 +170,13 @@ class Supervisor(ChimeraObject):
         return self._log_handler
 
     def broadCast(self,msg):
-        self.log.info(msg)
+        if isinstance(msg,Exception):
+            self.log.exception(msg)
+        else:
+            self.log.info(msg)
+
         if self._telegramBroadcast:
-            self._telegramSocket.write(msg+'\r\n')
+            self._telegramSocket.write('%s\r\n'% msg)
 
     def site(self):
         return self.getManager().getProxy('/Site/0')

@@ -1,9 +1,11 @@
 from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
 
-from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
+from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey, Time, Interval,
                         Float, PickleType, MetaData, create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
+
+import datetime
 
 engine = create_engine('sqlite:///%s' % DEFAULT_PROGRAM_DATABASE, echo=False)
 
@@ -51,20 +53,24 @@ class CheckTime(Check):
     __tablename__ = "checktime"
     __mapper_args__ = {'polymorphic_identity': 'CheckTime'}
 
-    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
-    sun_altitude = Column(Float, default=0.0) # The desired altitude
-    above = Column(Boolean, default=True) # Is it above (True) or below (False) specified altitude?
-    rising = Column(Boolean, default=False) # Is it rising (True) or setting (False)?
+    id = Column(Integer, ForeignKey('check.id'), primary_key=True)
 
-    def __init__(self, sun_alt,above,rising):
-        self.sun_altitude = float(sun_alt)
-        self.above = above.upper().replace(" ","") == "ABOVE"
-        self.rising = rising.upper().replace(" ","") == 'RISING'
+    mode = Column(Integer,default=0)   # Operation mode
+
+    time = Column(Time, default=None)  # Reference time
+    deltaTime = Column(Interval,default=datetime.timedelta(0)) # offset to apply to reference time
+
+
+    def __init__(self, mode=0,deltaTime=datetime.timedelta(0),time=None):
+        self.mode= int(mode)
+        self.time = time
+        self.deltaTime = deltaTime if isinstance(deltaTime, datetime.timedelta) else \
+            datetime.timedelta(hours=float(deltaTime))
 
     def __str__ (self):
-        return "checktime: Sun %s %.2f Degrees, %s" % ("above" if self.above else "below",
-                                                       self.sun_altitude,
-                                                       "rising" if self.rising else "setting")
+        return "checktime: Mode %i (time: %s / deltaTime: %s)"% (self.mode,
+                                                                 self.time,
+                                                                 self.deltaTime)
 
 class CheckHumidity(Check):
     __tablename__ = "checkhumidity"
