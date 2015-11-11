@@ -99,6 +99,8 @@ class Supervisor(ChimeraObject):
         if not self.machine.isAlive():
             self.machine.start()
 
+        # Todo: after starting the checker machine, do some basic check of operational status.
+
         return True
 
 
