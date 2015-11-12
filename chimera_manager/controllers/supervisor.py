@@ -247,9 +247,44 @@ class Supervisor(ChimeraObject):
 
     def _connectTelescopeEvents(self):
         # Todo
+        tel = self.getTel()
+        if not tel:
+            self.log.warning("Couldn't find telescope.")
+            return False
+
+        tel.slewBegin += self.getProxy()._watchSlewBegin
+        tel.slewComplete += self.getProxy()._watchSlewComplete
+        tel.trackingStarted += self.getProxy()._watchTrackingStarted
+        tel.trackingStopped += self.getProxy()._watchTrackingStopped
+
+        return True
+
         pass
 
     def _disconnectTelescopeEvents(self):
+        tel = self.getTel()
+        if not tel:
+            self.log.warning("Couldn't find telescope.")
+            return False
+
+        tel.slewBegin -= self.getProxy()._watchSlewBegin
+        tel.slewComplete -= self.getProxy()._watchSlewComplete
+        tel.trackingStarted -= self.getProxy()._watchTrackingStarted
+        tel.trackingStopped -= self.getProxy()._watchTrackingStopped
+
+    def _watchSlewBegin(self):
+        # Todo
+        pass
+
+    def _watchSlewComplete(self):
+        # Todo
+        pass
+
+    def _watchTrackingStarted(self):
+        # Todo
+        pass
+
+    def _watchTrackingStopped(self):
         # Todo
         pass
 
