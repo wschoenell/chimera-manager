@@ -183,6 +183,9 @@ class Supervisor(ChimeraObject):
     def site(self):
         return self.getManager().getProxy('/Site/0')
 
+    def getTel(self):
+        return self.getManager().getProxy(self["telescope"])
+
     def getItems(self):
         return self.checklist.itemsList
 

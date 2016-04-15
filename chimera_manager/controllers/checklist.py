@@ -13,7 +13,7 @@ from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
 from chimera_manager.controllers import baseresponse
 from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
-from chimera.core.exceptions import ObjectNotFoundException
+from chimera.core.exceptions import ObjectNotFoundException, InvalidLocationException
 from chimera_manager.core.exceptions import CheckAborted,CheckExecutionException
 
 import logging
@@ -202,7 +202,9 @@ class CheckList(object):
         for instrument in handler.process.__requires__:
             try:
                 setattr(handler, instrument,
-                        self.controller.getManager().getProxy(self.controller[instrument]))
+                       self.controller.getManager().getProxy(self.controller[instrument]))
             except ObjectNotFoundException, e:
                 self.log.error("No instrument to inject on %s handler" % handler)
+            except InvalidLocationException, e:
+                self.log.error("No instrument (%s) to inject on %s handler" % (instrument,handler))
 
