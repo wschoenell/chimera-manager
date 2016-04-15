@@ -54,7 +54,7 @@ class TimeHandler(CheckHandler):
         if abs(check.mode) == 1 or check.mode == 0:
             reftime = site.sunset()
         elif abs(check.mode) == 2:
-            reftime = site.sunset_wilight_begin()
+            reftime = site.sunset_twilight_begin()
         elif abs(check.mode) == 3:
             reftime = site.sunset_twilight_end()
         elif abs(check.mode) == 4:
