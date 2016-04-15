@@ -55,18 +55,18 @@ class StopAll(BaseResponse):
             except Exception, e:
                 manager.broadCast(e)
 
-        try:
-            manager.setFlag("telescope",IOFlag.CLOSE)
-            telescope.closeCover()
-        except NotImplementedError, e:
-            pass
-        except Exception, e:
-            manager.broadCast(e)
-            # raise Exception
-
-        manager.setFlag("dome",IOFlag.CLOSE)
-        dome.stand()
-        dome.close()
+        # try:
+        #     manager.setFlag("telescope",IOFlag.CLOSE)
+        #     telescope.closeCover()
+        # except NotImplementedError, e:
+        #     pass
+        # except Exception, e:
+        #     manager.broadCast(e)
+        #     # raise Exception
+        #
+        # manager.setFlag("dome",IOFlag.CLOSE)
+        # dome.stand()
+        # dome.close()
 
         manager.setFlag("camera",IOFlag.CLOSE)
         camera.abortExposure(readout=False)
@@ -94,6 +94,32 @@ class ParkTelescope(BaseResponse):
 
         try:
             telescope.park()
+        except Exception, e:
+            manager.broadCast(e)
+
+class OpenTelescope(BaseResponse):
+
+    @staticmethod
+    @requires("telescope")
+    def process(check):
+        telescope = OpenTelescope.telescope
+        manager = OpenTelescope.manager
+
+        try:
+            telescope.openCover()
+        except Exception, e:
+            manager.broadCast(e)
+
+class CloseTelescope(BaseResponse):
+
+    @staticmethod
+    @requires("telescope")
+    def process(check):
+        telescope = OpenTelescope.telescope
+        manager = OpenTelescope.manager
+
+        try:
+            telescope.closeCover()
         except Exception, e:
             manager.broadCast(e)
 
