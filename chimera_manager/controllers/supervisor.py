@@ -15,6 +15,7 @@ from chimera.core.log import fmt
 
 import threading
 import telnetlib
+import telegram
 import logging
 
 class Supervisor(ChimeraObject):
@@ -26,9 +27,8 @@ class Supervisor(ChimeraObject):
                     "scheduler"  : None,
                     "domefan"    : None,
                     "weatherstation" : None,
-                    "telegram-ip": None,       # Telegram host IP
-                    "telegram-port": None,     # Telegram host port
-                    "telegram-timeout": None,  # Telegram host timeout
+                    "telegram-token": None,       # Telegram host IP
+                    "telegram-chatid": None,     # Telegram host port
                     "freq": 0.01               # Set manager watch frequency in Hz.
                  }
 
@@ -53,6 +53,7 @@ class Supervisor(ChimeraObject):
 
         self.checklist = None
         self.machine = None
+        self.bot = None
 
 
     def __start__(self):
@@ -120,32 +121,11 @@ class Supervisor(ChimeraObject):
 
     def connectTelegram(self):
 
-        if self.isTelegramConnected():
-            self.disconnectTelegram()
-
-        if self["telegram-ip"] and self["telegram-port"]:
-            self._telegramSocket = telnetlib.Telnet(self["telegram-ip"],
-                                                    self["telegram-port"],
-                                                    self["telegram-timeout"] if self["telegram-timeout"] is not None else 30)
-            self.log.debug('[telegram]: Going online...')
-            self._telegramSocket.write("status_online \r\n")
-            if self._telegramSocket.expect(["SUCCESS"], timeout=5)[1]:
-                self.log.debug("[telegram]: online SUCCESS")
-                self._telegramBroadcast = True
-            else:
-                self.log.warning("[telegram]: online FAILED")
-                self._telegramBroadcast = False
+        if self["telegram-token"] is not None:
+            self.bot = telegram.Bot(token=self["telegram-token"])
 
     def disconnectTelegram(self):
-        try:
-            self._telegramSocket.close()
-        except Exception, e:
-            # just log the exception
-            self.log.exception(e)
-        finally:
-            self._telegramBroadcast = False
-            self._telegramSocket = None
-
+        pass
 
     def isTelegramConnected(self):
         return self._telegramSocket is not None
@@ -177,8 +157,9 @@ class Supervisor(ChimeraObject):
         else:
             self.log.info(msg)
 
-        if self._telegramBroadcast:
-            self._telegramSocket.write('%s\r\n'% msg)
+        if self.bot is not None and self["telegram-chatid"] is not None:
+            self.bot.sendMessage(chat_id=self["telegram-chatid"],
+                                 text=msg)
 
     def site(self):
         return self.getManager().getProxy('/Site/0')
