@@ -24,16 +24,11 @@ class BaseResponse(object):
 class StopAll(BaseResponse):
 
     @staticmethod
-    @requires("dome")
     @requires("telescope")
     @requires("camera")
     @requires("scheduler")
     def process(check):
         manager = StopAll.manager
-        scheduler = StopAll.scheduler
-        telescope = StopAll.telescope
-        dome = StopAll.dome
-        camera = StopAll.camera
 
         try:
             manager.setFlag("scheduler",IOFlag.CLOSE)
@@ -43,17 +38,20 @@ class StopAll(BaseResponse):
             manager.broadCast(e)
 
         try:
+            scheduler = StopAll.scheduler
             scheduler.stop()
         except Exception, e:
             manager.broadCast(e)
 
-        if telescope.isTracking():
-            try:
+
+        try:
+            telescope = StopAll.telescope
+            if telescope.isTracking():
                 telescope.stopTracking()
-            except NotImplementedError, e:
-                pass
-            except Exception, e:
-                manager.broadCast(e)
+        except NotImplementedError, e:
+            pass
+        except Exception, e:
+            manager.broadCast(e)
 
         # try:
         #     manager.setFlag("telescope",IOFlag.CLOSE)
@@ -68,8 +66,12 @@ class StopAll(BaseResponse):
         # dome.stand()
         # dome.close()
 
-        manager.setFlag("camera",IOFlag.CLOSE)
-        camera.abortExposure(readout=False)
+        try:
+            camera = StopAll.camera
+            manager.setFlag("camera",IOFlag.CLOSE)
+            camera.abortExposure(readout=False)
+        except:
+            pass
 
 class UnparkTelescope(BaseResponse):
 
