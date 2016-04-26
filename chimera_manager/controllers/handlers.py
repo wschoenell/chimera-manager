@@ -73,7 +73,7 @@ class TimeHandler(CheckHandler):
             ut = site.ut()
             ret = ut.time() > reftime.time()
             msg = "Reference time (%s) has passed. Now %s"%(reftime,ut) if ret else \
-                "Referemce time (%s) still in the future. Now %s"%(reftime,ut)
+                "Reference time (%s) still in the future. Now %s"%(reftime,ut)
             return ret,msg
         else:
             reftime += check.deltaTime

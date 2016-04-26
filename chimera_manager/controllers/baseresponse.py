@@ -273,8 +273,15 @@ class UnlockInstrument(BaseResponse):
     def process(check):
         manager = UnlockInstrument.manager
 
-        manager.unlockInstrument(check.instrument,
-                                 check.key)
+        manager.broadCast('Unlocking %s with key %s' % (check.instrument,
+                                                      check.key))
+
+        try:
+            manager.unlockInstrument(check.instrument,
+                                     check.key)
+        except Exception, e:
+            manager.broadCast(e)
+
 
     @staticmethod
     def model():
