@@ -67,6 +67,14 @@ class CheckTime(Check):
         self.deltaTime = deltaTime if isinstance(deltaTime, datetime.timedelta) else \
             datetime.timedelta(hours=float(deltaTime))
 
+    def __setattr__(self, key, value):
+        if (key == 'deltaTime' or key == 'time') and value is not None:
+            object.__setattr__(self,key,
+                               value if isinstance(value, datetime.timedelta) else \
+                                datetime.timedelta(hours=float(value)))
+        elif value is not None:
+            object.__setattr__(self,key,value)
+
     def __str__ (self):
         return "checktime: Mode %i (time: %s / deltaTime: %s)"% (self.mode,
                                                                  self.time,

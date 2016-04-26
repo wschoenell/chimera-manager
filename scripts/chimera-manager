@@ -12,6 +12,7 @@ import time
 import datetime as dt
 import shutil
 import re
+import yaml
 
 from chimera.core.cli import ChimeraCLI, action, ParameterType
 from chimera.core.callback import callback
@@ -43,14 +44,37 @@ class Manager(ChimeraCLI):
                            help="Supervisor controller to be used",
                            helpGroup="SUPERVISOR")
 
-        databaseHelp = """Database options\n\tThe file must have the following format:
+        databaseHelp = """To configure the supervisor you must create a YAML file with the following format:
 
-        # type    name             Eager (Par1,Par2,...,ParN) Responses       [(Par1,Par2,...,ParN),(Par1,Par2,...,ParN),...]
-        CheckTime OpenDome         False (-20, Setting)       OpenDome       [()]
-        CheckTime DarkSeq          False (-25, Setting)       CloseDome,LockInstrument,MkDarks,UnlockInstrument        [(),(dome,dark),(darkconfig.txt),(dome,dark)]
-        CheckTime SkyFlat          False (-15, Setting)       OpenDome,MkSkyFlats     [(),(skyflatconfig.txt)]
-        CheckTemp ControlFans      False (Lower)              ControlFans    [(ON)]
-        ...
+checklist:
+
+    - name: LockDomeOnSunrise
+      eager: False
+      comment: Stop all instruments, close telescope and dome, and lock dome at sunrise.
+      check:
+        - type: CheckTime
+          mode: 6
+          deltaTime: 0.25
+      responses:
+        - type: StopAll
+        - type: CloseTelescope
+        - type: CloseDomeFlap
+        - type: CloseDomeSlit
+        - type: LockInstrument
+          instrument: dome
+          key: sunup
+    - name: UnlockDomeOnSunset
+      eager: False
+      comment: Unlock dome on sunset. Will not open it. Just unlock.
+      check:
+        - type: CheckTime
+          mode: 2
+          deltaTime: -0.25
+      responses:
+        - type: UnLockInstrument
+          instrument: dome
+          key: sunup
+
         """
 
         self.addHelpGroup("DB", databaseHelp)
@@ -114,6 +138,70 @@ class Manager(ChimeraCLI):
     ############################################################################
 
     def generateDatabase(self, options):
+
+        with open(options.filename, 'r') as stream:
+            try:
+                checkconfig = yaml.load(stream)
+            except yaml.YAMLError as exc:
+                self.exit(exc)
+
+        session = Session()
+
+        items = []
+        supervisor = self.supervisor
+        checkItems = supervisor.getItems()
+        responseList = supervisor.getResponses()
+
+        show_item_list = True
+
+        for check in checkconfig['checklist']:
+
+            item = List(name=check['name'],
+                        eager = check['eager'])
+
+            self.out("# item: %s" % item.name)
+
+            for itemtype in check['check']:
+
+                if itemtype['type'].upper() in checkItems.keys():
+
+                    checkitem = checkItems[itemtype['type'].upper()]()
+                    for key in itemtype.keys():
+                        if hasattr(checkitem,key):
+                            setattr(checkitem,key,itemtype[key])
+                    item.check.append(checkitem)
+                else:
+                    if show_item_list:
+                        self.out('Could not find item "%s" in items list. Skipping... '
+                                 'Following options are present:'%(itemtype))
+                        for i in checkItems.keys():
+                            self.out(' - %s'%i)
+                        show_item_list = False
+                    continue
+
+            for response in check['responses']:
+
+                rtype = responseList[response['type'].upper()].model()
+                self.out('%s' % response['type'].upper())
+                try:
+                    r = rtype(response_id = response['type'])
+                except:
+                    pass
+
+                for key in response.keys():
+                    if hasattr(r,key):
+                        setattr(r,key,response[key])
+                item.response.append(r)
+
+            items.append(item)
+
+        session.add_all(items)
+        session.commit()
+
+        self.out("Manager database updated. New check list in effect from now on.")
+
+    def generateDatabase_old(self, options):
+
         f = None
         try:
             f = open(options.filename, "r")
