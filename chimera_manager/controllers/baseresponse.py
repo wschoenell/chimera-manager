@@ -275,10 +275,11 @@ class UnlockInstrument(BaseResponse):
         manager = UnlockInstrument.manager
 
         try:
-            manager.unlockInstrument(check.instrument,
-                                     check.key)
-            manager.broadCast('%s unlocked with key %s' % (check.instrument,
-                                                            check.key))
+            success = manager.unlockInstrument(check.instrument,
+                                               check.key)
+            if success:
+                manager.broadCast('%s unlocked with key %s' % (check.instrument,
+                                                                check.key))
         except Exception, e:
             manager.broadCast(e)
 

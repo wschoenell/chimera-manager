@@ -154,6 +154,7 @@ class Supervisor(ChimeraObject):
     def broadCast(self,msg):
         if isinstance(msg,Exception):
             self.log.exception(msg)
+            msg = repr(msg)
         else:
             self.log.info(msg)
 
@@ -220,12 +221,13 @@ class Supervisor(ChimeraObject):
 
         if self.getFlag(instrument) != InstrumentOperationFlag.LOCK:
             self.log.debug("Instrument not locked")
-            return
+            return False
 
         if self.checklist.updateInstrumentStatus(instrument,
                                                  InstrumentOperationFlag.CLOSE,
                                                  key):
             self._operationStatus[instrument] = InstrumentOperationFlag.CLOSE
+            return True
         else:
             raise StatusUpdateException("Unable to unlock %s with provided key"%(instrument))
 
@@ -248,7 +250,7 @@ class Supervisor(ChimeraObject):
         tel.trackingStopped += self.getProxy()._watchTrackingStopped
         tel.parkComplete += self.getProxy()._watchTelescopePark
         tel.unparkComplete += self.getProxy()._watchTelescopeUnpark
-        
+
         return True
 
     def _disconnectTelescopeEvents(self):
