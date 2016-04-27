@@ -92,7 +92,7 @@ class CheckHumidity(Check):
     # 0 - True if humidity is higher than specified
     # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, humidity,deltaTime=0.,mode=0):
+    def __init__(self, humidity=0.,deltaTime=0.,mode=0):
         self.humidity= float(humidity)
         self.deltaTime= deltaTime
         self.mode= mode
@@ -106,9 +106,16 @@ class CheckTemperature(Check):
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     temperature = Column(Float, default=0.0) # The desired temperature in Celsius
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, temperature):
+    def __init__(self, temperature=0.,deltaTime=0.,mode=0):
         self.temperature= float(temperature)
+        self.deltaTime= deltaTime
+        self.mode= mode
 
     def __str__ (self):
         return "checktemperature: threshold %.2f " % (self.temperature)
@@ -119,9 +126,16 @@ class CheckWindSpeed(Check):
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     windspeed = Column(Float, default=0.0) # The desired wind speed in m/s
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, windspeed):
+    def __init__(self, windspeed=0.,deltaTime=0.,mode=0):
         self.windspeed= float(windspeed)
+        self.deltaTime= deltaTime
+        self.mode= mode
 
     def __str__ (self):
         return "checkwindspeed: threshold %.2f " % (self.windspeed)
@@ -132,9 +146,16 @@ class CheckDewPoint(Check):
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     dewpoint = Column(Float, default=0.0) # The desired dewpoint in Celsius
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, dewpoint):
+    def __init__(self, dewpoint=0.,deltaTime=0.,mode=0):
         self.dewpoint= float(dewpoint)
+        self.deltaTime= deltaTime
+        self.mode= mode
 
     def __str__ (self):
         return "checkdewpoint: threshold %.2f " % (self.dewpoint)
@@ -145,9 +166,16 @@ class CheckDew(Check):
 
     id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
     tempdiff = Column(Float, default=0.0) # The desired difference in temperature and dew point
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
 
-    def __init__(self, tempdiff):
+    def __init__(self, tempdiff=0.,deltaTime=0.,mode=0):
         self.tempdiff= float(tempdiff)
+        self.deltaTime= deltaTime
+        self.mode= mode
 
     def __str__ (self):
         return "checkdew: threshold %.2f " % (self.tempdiff)
@@ -187,7 +215,7 @@ class LockInstrument(Response):
     instrument = Column(String)
     key = Column(String)
 
-    def __init__(self, instrument, key):
+    def __init__(self, instrument='', key=''):
         self.response_id = self.__tablename__.upper()
         self.instrument = instrument
         self.key = key
@@ -204,7 +232,7 @@ class UnlockInstrument(Response):
     instrument = Column(String)
     key = Column(String)
 
-    def __init__(self, instrument, key):
+    def __init__(self, instrument='', key=''):
         self.response_id = self.__tablename__.upper()
         self.instrument = instrument
         self.key = key
@@ -221,7 +249,7 @@ class SetInstrumentFlag(Response):
     instrument = Column(String)
     flag = Column(Integer)
 
-    def __init__(self,instrument,flag):
+    def __init__(self,instrument='',flag=''):
         self.response_id = self.__tablename__.upper()
         self.instrument = instrument
         self.flag = int(flag)
@@ -229,5 +257,33 @@ class SetInstrumentFlag(Response):
     def __str__(self):
         return "SetFlag: instrument(%s) flag(%s)"%(self.instrument,
                                                    self.flag)
+
+class ActivateItem(Response):
+    __tablename__ = "activateitem"
+    __mapper_args__ = {'polymorphic_identity': 'ActivateItem'}
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    item = Column(String)
+
+    def __init__(self,item=''):
+        self.response_id = self.__tablename__.upper()
+        self.item = item.upper()
+
+    def __str__(self):
+        return "Activate: %s"%(self.item)
+
+class DeactivateItem(Response):
+    __tablename__ = "deactivateitem"
+    __mapper_args__ = {'polymorphic_identity': 'DeactivateItem'}
+
+    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    item = Column(String)
+
+    def __init__(self,item=''):
+        self.response_id = self.__tablename__.upper()
+        self.item = item.upper()
+
+    def __str__(self):
+        return "Deactivate: %s"%(self.item)
 
 metaData.create_all(engine)

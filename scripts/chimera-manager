@@ -182,11 +182,13 @@ checklist:
             for response in check['responses']:
 
                 rtype = responseList[response['type'].upper()].model()
-                self.out('%s' % response['type'].upper())
                 try:
-                    r = rtype(response_id = response['type'])
+                    r = rtype(response_id = response['type'].upper())
                 except:
-                    pass
+                    try:
+                        r = rtype()
+                    except:
+                        raise
 
                 for key in response.keys():
                     if hasattr(r,key):

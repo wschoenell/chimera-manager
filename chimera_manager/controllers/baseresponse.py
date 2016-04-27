@@ -5,6 +5,7 @@ as long as they inherit the Response class.
 '''
 
 import os
+import copy
 import subprocess
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
@@ -273,12 +274,11 @@ class UnlockInstrument(BaseResponse):
     def process(check):
         manager = UnlockInstrument.manager
 
-        manager.broadCast('Unlocking %s with key %s' % (check.instrument,
-                                                      check.key))
-
         try:
             manager.unlockInstrument(check.instrument,
                                      check.key)
+            manager.broadCast('%s unlocked with key %s' % (check.instrument,
+                                                            check.key))
         except Exception, e:
             manager.broadCast(e)
 
@@ -315,3 +315,29 @@ class SendTelegram(BaseResponse):
         manager = BaseResponse.manager
 
         manager.broadCast(check.message)
+
+class ActivateItem(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = BaseResponse.manager
+        manager = copy.copy(manager)
+
+        manager.broadCast("Activating item %s " % check.item)
+        manager.activate(check.item)
+
+    @staticmethod
+    def model():
+        return model.ActivateItem
+
+class DeactivateItem(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = BaseResponse.manager
+        manager = copy.copy(manager)
+
+        manager.broadCast("Deactivating item %s " % check.item)
+        manager.deactivate(check.item)
+
+    @staticmethod
+    def model():
+        return model.DeactivateItem

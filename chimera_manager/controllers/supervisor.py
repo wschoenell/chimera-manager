@@ -89,13 +89,13 @@ class Supervisor(ChimeraObject):
 
     def control(self):
 
-        self.log.debug('[control] current status is "%s"'%(self._operationStatus["site"]))
+        # self.log.debug('[control] current status is "%s"'%(self._operationStatus["site"]))
 
         if self.machine.state() == State.IDLE:
             self.machine.state(State.START)
             return True
-        else:
-            self.log.info("[control] current machine state is %s."%self.machine.state())
+        # else:
+        #     self.log.info("[control] current machine state is %s."%self.machine.state())
 
         if not self.machine.isAlive():
             self.machine.start()
@@ -228,6 +228,12 @@ class Supervisor(ChimeraObject):
             self._operationStatus[instrument] = InstrumentOperationFlag.CLOSE
         else:
             raise StatusUpdateException("Unable to unlock %s with provided key"%(instrument))
+
+    def activate(self,item):
+        self.checklist.activate(item)
+
+    def deactivate(self,item):
+        self.checklist.deactivate(item)
 
     def _connectTelescopeEvents(self):
         # Todo

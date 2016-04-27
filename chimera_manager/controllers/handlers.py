@@ -122,7 +122,7 @@ class HumidityHandler(CheckHandler):
                     msg += "Elapsed time ok"
                     check.time = site.ut().replace(tzinfo=None)
                 else:
-                    msg += "Elapsed time too short."
+                    msg += "Elapsed time () too short."
             else:
                 check.time = site.ut().replace(tzinfo=None)
                 ret = False
@@ -140,17 +140,40 @@ class TemperatureHandler(CheckHandler):
     Process will return True if temperature is bellow specified threshold  or False, otherwise.
     '''
     @staticmethod
+    @requires("site")
     @requires("weatherstation")
     def process(check):
         weatherstation = TemperatureHandler.weatherstation
+        site = TemperatureHandler.site
 
         temperature = weatherstation.temperature()
-        ret = check.temperature > temperature
-        msg = "Temperature OK (%.2f/%.2f)"%(temperature.value,
-                                            check.temperature) if not ret \
-            else "Temperature lower than specified threshold(%.2f/%.2f)"%(temperature.value,
-                                            check.temperature)
-        return ret, msg
+        if check.mode == 0:
+            ret = check.temperature > temperature.value
+            msg = "Temperature OK (%.2f/%.2f)"%(temperature.value,
+                                                check.temperature) if not ret \
+                else "Temperature lower than specified threshold(%.2f/%.2f)"%(temperature.value,
+                                                check.temperature)
+            return ret, msg
+        elif check.mode == 1: # True if value is lower for more than the specified number of hours
+            ret = check.temperature < temperature.value
+            msg = "Nothing to do. Temperature lower than threshold (%.2f/%.2f)."%(temperature.value,
+                                                                                  check.temperature) if not ret \
+                else "Temperature higher than threshold (%.2f/%.2f)."%(temperature.value,check.temperature)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret, msg
 
     @staticmethod
     def log(check):
@@ -163,17 +186,40 @@ class WindSpeedHandler(CheckHandler):
     Process will return True if wind speed is above specified threshold or False, otherwise.
     '''
     @staticmethod
+    @requires("site")
     @requires("weatherstation")
     def process(check):
         weatherstation = WindSpeedHandler.weatherstation
+        site = WindSpeedHandler.site
 
         windspeed = weatherstation.wind_speed()
-        ret = check.windspeed < windspeed.value
-        msg = "Wind speed OK (%.2f/%.2f)"%(windspeed.value,
-                                           check.windspeed) if not ret \
-            else "Wind speed higher than specified threshold (%.2f/%.2f)"%(windspeed.value,
-                                           check.windspeed)
-        return ret, msg
+        if check.mode == 0:
+            ret = check.windspeed < windspeed.value
+            msg = "Wind speed OK (%.2f/%.2f)"%(windspeed.value,
+                                               check.windspeed) if not ret \
+                else "Wind speed higher than specified threshold (%.2f/%.2f)"%(windspeed.value,
+                                               check.windspeed)
+            return ret, msg
+
+        elif check.mode == 1: # True if value is lower for more than the specified number of hours
+            ret = check.windspeed > windspeed.value
+            msg = "Nothing to do. Windspeed higher than threshold (%.2f/%.2f)."%(windspeed.value,check.windspeed) if not ret \
+                else "Windspeed lower than threshold (%.2f/%.2f)."%(windspeed.value,check.windspeed)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret, msg
 
     @staticmethod
     def log(check):
@@ -205,20 +251,45 @@ class DewHandler(CheckHandler):
     Process will return True if difference is bellow specified threshold  or False, otherwise.
     '''
     @staticmethod
+    @requires("site")
     @requires("weatherstation")
     def process(check):
         weatherstation = DewHandler.weatherstation
+        site = DewHandler.site
 
         temperature = weatherstation.temperature()
         dewpoint = weatherstation.dew_point()
         tempdiff = ( temperature.value - dewpoint.value )
-        ret = check.tempdiff > tempdiff
-        msg = "Dew OK (%.2f/%.2f)"%(tempdiff,
-                                    check.tempdiff) if not ret \
-            else "Dew point difference lower than specified threshold (%.2f/%.2f)"%(tempdiff,
-                                    check.tempdiff)
-        return ret, msg
+
+        if check.mode == 0:
+            ret = check.tempdiff > tempdiff
+            msg = "Dew OK (%.2f/%.2f)"%(tempdiff,
+                                        check.tempdiff) if not ret \
+                else "Dew point difference lower than specified threshold (%.2f/%.2f)"%(tempdiff,
+                                        check.tempdiff)
+            return ret, msg
+        elif check.mode == 1: # True if value is lower for more than the specified number of hours
+            ret = check.tempdiff < tempdiff
+            msg = "Nothing to do. Dew point difference " \
+                  "higher than threshold (%.2f/%.2f)."%(tempdiff, check.tempdiff) if not ret \
+                else "Windspeed lower than threshold (%.2f/%.2f)."%(tempdiff, check.tempdiff)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret, msg
 
     @staticmethod
     def log(check):
         return "%s"%(check)
+

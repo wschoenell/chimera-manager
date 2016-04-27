@@ -41,7 +41,8 @@ class CheckList(object):
                               CheckTemperature: TemperatureHandler,
                               CheckWindSpeed:   WindSpeedHandler,
                               CheckDewPoint:    DewPointHandler,
-                              CheckDew:         DewHandler
+                              CheckDew:         DewHandler,
+
                               }
         self.itemsList = {}
         self.responseList = {}
@@ -128,6 +129,7 @@ class CheckList(object):
                     for response in item.response:
                         response_status = ResponseStatus.OK
                         try:
+                            self.log.debug('%s' % response.response_id)
                             self.currentResponse = self.responseList[response.response_id]
                             self.controller.itemResponseBegin(item,self.currentResponse)
                             self.currentResponse.process(response)
@@ -183,6 +185,28 @@ class CheckList(object):
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
 
         return InstrumentOperationFlag[iostatus[0].status]
+
+    def activate(self,item):
+        session = Session()
+
+        activate_item = session.query(List).filter(List.name == item)
+
+        for act in activate_item:
+            act = session.merge(act)
+            act.active = True
+
+        session.commit()
+
+    def deactivate(self,item):
+        session = Session()
+
+        deactivate_item = session.query(List).filter(List.name == item)
+
+        for deact in deactivate_item:
+            deact = session.merge(deact)
+            deact.active = False
+
+        session.commit()
 
     def _injectInstrument(self, handler):
         if not (issubclass(handler, CheckHandler) or issubclass(handler, baseresponse.BaseResponse)):
