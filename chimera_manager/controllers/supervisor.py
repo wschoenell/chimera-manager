@@ -246,10 +246,10 @@ class Supervisor(ChimeraObject):
         tel.slewComplete += self.getProxy()._watchSlewComplete
         tel.trackingStarted += self.getProxy()._watchTrackingStarted
         tel.trackingStopped += self.getProxy()._watchTrackingStopped
-
+        tel.parkComplete += self.getProxy()._watchTelescopePark
+        tel.unparkComplete += self.getProxy()._watchTelescopeUnpark
+        
         return True
-
-        pass
 
     def _disconnectTelescopeEvents(self):
         tel = self.getTel()
@@ -261,13 +261,13 @@ class Supervisor(ChimeraObject):
         tel.slewComplete -= self.getProxy()._watchSlewComplete
         tel.trackingStarted -= self.getProxy()._watchTrackingStarted
         tel.trackingStopped -= self.getProxy()._watchTrackingStopped
+        tel.parkComplete -= self.getProxy()._watchTelescopePark
+        tel.unparkComplete -= self.getProxy()._watchTelescopeUnpark
 
     def _watchSlewBegin(self):
-        # Todo
-        pass
+        self.setFlag("telescope",InstrumentOperationFlag.OPERATING)
 
     def _watchSlewComplete(self):
-        # Todo
         pass
 
     def _watchTrackingStarted(self):
@@ -275,8 +275,19 @@ class Supervisor(ChimeraObject):
         pass
 
     def _watchTrackingStopped(self):
-        # Todo
-        pass
+        self.setFlag("telescope",InstrumentOperationFlag.READY)
+
+    def _watchTelescopePark(self):
+
+        self.broadCast("Telescope parked")
+        self.setFlag("telescope",InstrumentOperationFlag.CLOSE)
+        self.setFlag("dome",InstrumentOperationFlag.CLOSE)
+
+    def _watchTelescopeUnpark(self):
+
+        self.broadCast("Telescope unparked")
+        self.setFlag("telescope",InstrumentOperationFlag.READY)
+        self.setFlag("dome",InstrumentOperationFlag.READY)
 
     def _connectDomeEvents(self):
         # Todo
