@@ -303,8 +303,14 @@ checklist:
         self.out("General status:")
         for inst_ in manager.getInstrumentList():
             flag = self._getColoredFlag(manager.getFlag(inst_))
-            self.out("- %s: %s"%(inst_,
-                                 flag))
+            key = ""
+            if manager.getFlag(inst_) == InstrumentOperationFlag.LOCK:
+                key = ' [%s]' % manager.getInstrumentKey(inst_)
+
+            self.out("- %s: %s %s"%(inst_,
+                                    flag,
+                                    key))
+
         self.out("=" * 40)
 
         session = Session()

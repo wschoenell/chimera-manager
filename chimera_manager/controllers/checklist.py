@@ -186,6 +186,12 @@ class CheckList(object):
 
         return InstrumentOperationFlag[iostatus[0].status]
 
+    def instrumentKey(self,instrument):
+        session = ioSession()
+        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
+
+        return iostatus[0].key
+
     def activate(self,item):
         session = Session()
 

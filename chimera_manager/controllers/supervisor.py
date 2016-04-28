@@ -217,6 +217,12 @@ class Supervisor(ChimeraObject):
         else:
             self.log.warning("Could not change instrument status.")
 
+    def getInstrumentKey(self,instrument):
+        if self.getFlag(instrument) == InstrumentOperationFlag.LOCK:
+            return self.checklist.instrumentKey(instrument)
+        else:
+            return ""
+
     def unlockInstrument(self,instrument,key):
 
         if self.getFlag(instrument) != InstrumentOperationFlag.LOCK:

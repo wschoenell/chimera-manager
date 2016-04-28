@@ -73,6 +73,7 @@ class StopAll(BaseResponse):
         try:
             camera = StopAll.camera
             manager.setFlag("camera",IOFlag.CLOSE)
+
             camera.abortExposure(readout=False)
         except:
             pass
