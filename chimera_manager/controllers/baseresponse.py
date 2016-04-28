@@ -35,15 +35,17 @@ class StopAll(BaseResponse):
             manager.setFlag("scheduler",IOFlag.CLOSE)
         except StatusUpdateException,e:
             manager.broadCast(e)
-        except:
+            pass
+        except Exception, e:
             manager.broadCast(e)
+            pass
 
         try:
             scheduler = StopAll.scheduler
             scheduler.stop()
         except Exception, e:
             manager.broadCast(e)
-
+            pass
 
         try:
             telescope = StopAll.telescope
@@ -53,6 +55,7 @@ class StopAll(BaseResponse):
             pass
         except Exception, e:
             manager.broadCast(e)
+            pass
 
         # try:
         #     manager.setFlag("telescope",IOFlag.CLOSE)
