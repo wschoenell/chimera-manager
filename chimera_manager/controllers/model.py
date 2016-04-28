@@ -180,6 +180,23 @@ class CheckDew(Check):
     def __str__ (self):
         return "checkdew: threshold %.2f " % (self.tempdiff)
 
+class AskListener(Check):
+    __tablename__ = "asklistener"
+    __mapper_args__ = {'polymorphic_identity': 'AskListener'}
+
+    id       = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    question = Column(String)
+    waittime = Column(Integer)
+
+    # response   = relation("Response", backref=backref("question", order_by="Response.list_id"),
+    #                      cascade="all, delete, delete-orphan")
+    def __init__(self, question='', waittime=10):
+        self.question = question
+        self.waittime = waittime
+
+    def __str__(self):
+        return "[waittime: %i] %s" % (self.waittime,self.question)
+
 class Response(Base):
     __tablename__ = "response"
 
@@ -257,6 +274,37 @@ class SetInstrumentFlag(Response):
     def __str__(self):
         return "SetFlag: instrument(%s) flag(%s)"%(self.instrument,
                                                    self.flag)
+
+class Question(Response):
+    __tablename__ = "question"
+    __mapper_args__ = {'polymorphic_identity': 'Question'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    question = Column(String)
+    waittime = Column(Integer)
+
+    # response   = relation("Response", backref=backref("question", order_by="Response.list_id"),
+    #                      cascade="all, delete, delete-orphan")
+
+    def __init__(self):
+        self.response_id = self.__tablename__.upper()
+
+    def __str__(self):
+        return "[waittime: %i] %s" % (self.waittime,self.question)
+
+class SendTelegram(Response):
+    __tablename__ = "sendtelegram"
+    __mapper_args__ = {'polymorphic_identity': 'SendTelegram'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    message = Column(String)
+
+    def __init__(self,message=''):
+        self.response_id = self.__tablename__.upper()
+        self.message = message
+
+    def __str__(self):
+        return "[SendTelegram]: %s" % (self.message)
 
 class ActivateItem(Response):
     __tablename__ = "activateitem"

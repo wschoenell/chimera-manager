@@ -167,37 +167,39 @@ class Supervisor(ChimeraObject):
             self.log.info(msg)
 
         if self.bot is not None and self["telegram-broascast-ids"] is not None:
-            for id in self["telegram-broascast-ids"]:
+            for id in self._broadcast_ids:
                 self.bot.sendMessage(chat_id=id,
                                      text=msg)
 
-    def askWatcher(self,question):
+    def askWatcher(self,question,waittime):
 
         if self.bot is not None and self["telegram-listen-ids"] is not None:
 
             updates = self.bot.getUpdates()
-            update_id = updates[-1].message.update_id + 1
+            update_id=None
+            for update in updates:
+                update_id = updates[-1].update_id + 1
 
-            self.log.debug('Asking lister %s.' % question.question)
+            self.log.debug('Asking lister %s.' % question)
 
-            for id in self["telegram-listen-ids"]:
+            for id in self._listen_ids:
                 self.bot.sendMessage(chat_id=id,
                                      text='[waittime: %i s] %s' %
-                                          (question.waittime,
-                                           question.question))
+                                          (waittime,
+                                           question))
 
             start_time = time.time()
-            while time.time() - start_time < question.waittime:
+            while time.time() - start_time < waittime:
 
                 updates = self.bot.getUpdates(offset = update_id)
 
                 for update in updates:
 
-                    if update.message.chat_id in self["telegram-listen-ids"]:
+                    if update.message.chat_id in self._listen_ids:
                         answer = update.message.text
                         if answer is not None:
                             return answer
-                        update_id = update.message.update_id+1
+                        update_id = update.update_id+1
 
             return None
 

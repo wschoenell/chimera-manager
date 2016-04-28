@@ -323,6 +323,21 @@ class SendTelegram(BaseResponse):
 
         manager.broadCast(check.message)
 
+    @staticmethod
+    def model():
+        return model.SendTelegram
+
+class Question(BaseResponse):
+    @staticmethod
+    def process(check):
+        manager = BaseResponse.manager
+        result = manager.askWatcher(check.question,check.waittime)
+        manager.broadCast(result)
+
+    @staticmethod
+    def model():
+        return model.Question
+
 class ActivateItem(BaseResponse):
     @staticmethod
     def process(check):

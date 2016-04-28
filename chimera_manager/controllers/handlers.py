@@ -244,6 +244,21 @@ class DewPointHandler(CheckHandler):
     def log(check):
         return "%s"%(check)
 
+class AskListenerHandler(CheckHandler):
+
+    @staticmethod
+    def process(check):
+        manager = AskListenerHandler.manager
+
+        result = manager.askWatcher(check.question,check.waittime)
+
+        ret = result.upper() == "OK"
+
+        if ret:
+            return ret,"User send OK. Proceeding..."
+        else:
+            return False,"Negated with %s" % result
+
 class DewHandler(CheckHandler):
     '''
     This class checks if the difference between temperature and dew point is above or bellow some threshold.
