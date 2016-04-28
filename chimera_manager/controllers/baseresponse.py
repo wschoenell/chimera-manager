@@ -284,6 +284,8 @@ class UnlockInstrument(BaseResponse):
             if success:
                 manager.broadCast('%s unlocked with key %s' % (check.instrument,
                                                                 check.key))
+        except StatusUpdateException, e:
+            pass
         except Exception, e:
             manager.broadCast(e)
 
