@@ -101,6 +101,8 @@ class CheckList(object):
             item.status = FlagStatus.UNKNOWN.index
             return
 
+        status = False
+        msg = ''
         for check in item.check:
 
             # aborted?
@@ -110,56 +112,71 @@ class CheckList(object):
 
             try:
                 self.currentCheck = check
-                self.currentHandler = self.checkHandlers[type(check)]
+                try:
+                    self.currentHandler = self.checkHandlers[type(check)]
+                except KeyError:
+                    self.log.error("No handler to %s item. Skipping it" % check)
+                    continue
 
                 logMsg = str(self.currentHandler.log(check))
                 self.log.debug("[start] %s " % logMsg)
                 self.controller.checkBegin(check, logMsg)
 
-                status,msg = self.currentHandler.process(check) # return response id
-
-                self.log.debug("[start] %s: %s " % (status,msg))
+                i_status,i_msg = self.currentHandler.process(check) # return response id
+                status = i_status and (item.eager or i_status != item.status)
+                msg += i_msg
 
                 if self.mustStop.isSet():
                     self.controller.checkComplete(check, FlagStatus.ABORTED)
                     raise CheckAborted()
-                elif status and (item.eager or status != item.status):
-                    self.controller.itemStatusChanged(item,status)
-                    # Get response
-                    for response in item.response:
-                        response_status = ResponseStatus.OK
-                        try:
-                            self.log.debug('%s' % response.response_id)
-                            self.currentResponse = self.responseList[response.response_id]
-                            self.controller.itemResponseBegin(item,self.currentResponse)
-                            self.currentResponse.process(response)
-                        except KeyError:
-                            self.log.debug("No handler to response %s. Skipping it" % response.response_id)
-                            response_status = ResponseStatus.ERROR
-                        except Exception, e:
-                            self.log.exception(e)
-                            response_status = ResponseStatus.ERROR
-                        finally:
-                            self.controller.itemResponseComplete(item, self.currentResponse, status)
+                elif not status:
+                    break
 
-                    # currentResponse = self.responseList[item.response]
-                    #
-                    # currentResponse.process(check)
-
-                    # item.status = status.index
-                    item.lastChange = self.controller.site().ut().replace(tzinfo=None)
-                    self.controller.itemResponseComplete(item,msg)
-
-                self.controller.checkComplete(check, FlagStatus.OK)
-                item.lastUpdate = self.controller.site().ut().replace(tzinfo=None)
-                item.status = status
             except CheckExecutionException, e:
                 self.controller.checkComplete(check, FlagStatus.ERROR)
                 raise
-            except KeyError:
-                self.log.debug("No handler to %s item. Skipping it" % check)
-            finally:
-                self.log.debug("[finish] took: %f s" % (time.time() - t0))
+            except Exception, e:
+                self.log.debug("Exception in check routine: %s" % repr(e))
+                self.controller.checkComplete(check, FlagStatus.ERROR)
+                status = False
+                break
+            else:
+                self.controller.checkComplete(check, FlagStatus.OK)
+
+        self.log.debug("[start] %s: %s " % (status,msg))
+
+        if status:
+
+            self.controller.itemStatusChanged(item,status)
+            # Get response
+            for response in item.response:
+                response_status = ResponseStatus.OK
+                try:
+                    self.log.debug('%s' % response.response_id)
+                    self.currentResponse = self.responseList[response.response_id]
+                    self.controller.itemResponseBegin(item,self.currentResponse)
+                    self.currentResponse.process(response)
+                except KeyError:
+                    self.log.debug("No handler to response %s. Skipping it" % response.response_id)
+                    response_status = ResponseStatus.ERROR
+                except Exception, e:
+                    self.log.exception(e)
+                    response_status = ResponseStatus.ERROR
+                finally:
+                    self.controller.itemResponseComplete(item, self.currentResponse, status)
+
+            # currentResponse = self.responseList[item.response]
+            #
+            # currentResponse.process(check)
+
+            # item.status = status.index
+            item.lastChange = self.controller.site().ut().replace(tzinfo=None)
+            self.controller.itemResponseComplete(item,msg)
+
+        item.lastUpdate = self.controller.site().ut().replace(tzinfo=None)
+        item.status = status
+
+        self.log.debug("[finish] took: %f s" % (time.time() - t0))
 
     def updateInstrumentStatus(self,instrument,status,key=None):
         session = ioSession()
