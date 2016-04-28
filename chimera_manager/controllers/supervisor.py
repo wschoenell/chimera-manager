@@ -17,6 +17,7 @@ import threading
 import telnetlib
 import telegram
 import logging
+import time
 
 class Supervisor(ChimeraObject):
 
@@ -27,8 +28,9 @@ class Supervisor(ChimeraObject):
                     "scheduler"  : None,
                     "domefan"    : None,
                     "weatherstation" : None,
-                    "telegram-token": None,       # Telegram host IP
-                    "telegram-chatid": None,     # Telegram host port
+                    "telegram-token": None,          # Telegram bot token
+                    "telegram-broascast-ids": None,  # Telegram broadcast ids
+                    "telegram-listen-ids": None,     # Telegram listen ids
                     "freq": 0.01               # Set manager watch frequency in Hz.
                  }
 
@@ -76,6 +78,12 @@ class Supervisor(ChimeraObject):
         self._connectSchedulerEvents()
 
         self.setHz(self["freq"])
+
+        self._broadcast_ids = None if self["telegram-broascast-ids"] is None \
+            else [int(id) for id in str(self["telegram-broascast-ids"]).split(',')]
+
+        self._listen_ids = None if self["telegram-listen-ids"] is None \
+            else [int(id) for id in str(self["telegram-listen-ids"]).split(',')]
 
     def __stop__(self):
 
@@ -158,9 +166,40 @@ class Supervisor(ChimeraObject):
         else:
             self.log.info(msg)
 
-        if self.bot is not None and self["telegram-chatid"] is not None:
-            self.bot.sendMessage(chat_id=self["telegram-chatid"],
-                                 text=msg)
+        if self.bot is not None and self["telegram-broascast-ids"] is not None:
+            for id in self["telegram-broascast-ids"]:
+                self.bot.sendMessage(chat_id=id,
+                                     text=msg)
+
+    def askWatcher(self,question):
+
+        if self.bot is not None and self["telegram-listen-ids"] is not None:
+
+            updates = self.bot.getUpdates()
+            update_id = updates[-1].message.update_id + 1
+
+            self.log.debug('Asking lister %s.' % question.question)
+
+            for id in self["telegram-listen-ids"]:
+                self.bot.sendMessage(chat_id=id,
+                                     text='[waittime: %i s] %s' %
+                                          (question.waittime,
+                                           question.question))
+
+            start_time = time.time()
+            while time.time() - start_time < question.waittime:
+
+                updates = self.bot.getUpdates(offset = update_id)
+
+                for update in updates:
+
+                    if update.message.chat_id in self["telegram-listen-ids"]:
+                        answer = update.message.text
+                        if answer is not None:
+                            return answer
+                        update_id = update.message.update_id+1
+
+            return None
 
     def site(self):
         return self.getManager().getProxy('/Site/0')
