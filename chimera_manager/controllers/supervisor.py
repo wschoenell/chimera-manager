@@ -31,7 +31,8 @@ class Supervisor(ChimeraObject):
                     "telegram-token": None,          # Telegram bot token
                     "telegram-broascast-ids": None,  # Telegram broadcast ids
                     "telegram-listen-ids": None,     # Telegram listen ids
-                    "freq": 0.01               # Set manager watch frequency in Hz.
+                    "freq": 0.01  ,                  # Set manager watch frequency in Hz.
+                    "max_mins": 10                   # Maximum time, in minutes, data from weather station should have
                  }
 
     def __init__(self):

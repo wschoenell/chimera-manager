@@ -49,6 +49,19 @@ class Check(Base):
     __tablename__ = "check"
     __mapper_args__ = {'polymorphic_on': check_type}
 
+class CheckDome(Check):
+    __tablename__ = "checkdome"
+    __mapper_args__ = {'polymorphic_identity': 'CheckDome'}
+    id = Column(Integer, ForeignKey('check.id'), primary_key=True)
+
+    mode = Column(Integer,default=0)   # Operation mode
+
+    def __init__(self, mode=0):
+        self.mode= int(mode)
+
+    def __str__(self):
+        return "CheckDome: mode %i" % self.mode
+
 class CheckTime(Check):
     __tablename__ = "checktime"
     __mapper_args__ = {'polymorphic_identity': 'CheckTime'}

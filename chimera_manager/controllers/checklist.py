@@ -2,6 +2,7 @@
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
                                                CheckDewPoint, CheckDew, AskListener,
+                                               CheckDome,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
@@ -9,7 +10,8 @@ from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler,
                                                   WindSpeedHandler, DewPointHandler,
-                                                  DewHandler, AskListenerHandler)
+                                                  DewHandler, AskListenerHandler,
+                                                  DomeHandler)
 from chimera_manager.controllers import baseresponse
 from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
@@ -42,7 +44,9 @@ class CheckList(object):
                               CheckWindSpeed:   WindSpeedHandler,
                               CheckDewPoint:    DewPointHandler,
                               CheckDew:         DewHandler,
-                              AskListener:      AskListenerHandler
+                              AskListener:      AskListenerHandler,
+                              CheckDome: DomeHandler,
+
                               }
         self.itemsList = {}
         self.responseList = {}
@@ -263,8 +267,9 @@ class CheckList(object):
                             ws_manager = self.controller.getManager().getProxy(ws)
                             ws_list.append(ws_manager)
                         except Exception, e:
-                            self.log.error('Could not inject weather station %i on %s handler' % (i,
+                            self.log.error('Could not inject weather station %s on %s handler' % (ws,
                                                                                                   handler))
+                            self.log.exception(e)
                     if len(ws_list) > 0:
                         setattr(handler, instrument, ws_list)
                 else:

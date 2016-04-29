@@ -353,7 +353,7 @@ class DewHandler(CheckHandler):
         return "%s"%(check)
 
 
-class DomeSlitOpenHandler(CheckHandler):
+class DomeHandler(CheckHandler):
     '''
     This class checks if dome slit is open.
 
@@ -362,33 +362,26 @@ class DomeSlitOpenHandler(CheckHandler):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = DomeSlitOpenHandler.dome
+        dome = DomeHandler.dome
 
-        ret = dome.isSlitOpen()
-        msg = "Dome slit open" if ret else "Dome slit closed"
+        ret,msg = False, ""
 
-        return ret, msg
-
-    @staticmethod
-    def log(check):
-        return "%s"%(check)
-
-class DomeSlitClosedHandler(CheckHandler):
-    '''
-    This class checks if dome slit is closed.
-
-    Process will return True if dew point is bellow specified threshold  or False, otherwise.
-    '''
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        dome = DomeSlitClosedHandler.dome
-
-        ret = dome.isSlitOpen()
-        msg = "Dome slit closed" if ret else "Dome slit open"
+        if check.mode == 0:
+            ret = dome.isSlitOpen()
+            msg = "Dome slit open" if ret else "Dome slit closed"
+        elif check.mode == 1:
+            ret = not dome.isSlitOpen()
+            msg = "Dome slit closed" if ret else "Dome slit open"
+        elif check.mode == 2:
+            ret = dome.isFlapOpen()
+            msg = "Dome flap open" if ret else "Dome flap closed"
+        elif check.mode == 3:
+            ret = not dome.isFlapOpen()
+            msg = "Dome flap closed" if ret else "Dome flap open"
 
         return ret, msg
 
     @staticmethod
     def log(check):
         return "%s"%(check)
+
