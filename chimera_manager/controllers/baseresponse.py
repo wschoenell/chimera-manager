@@ -226,13 +226,13 @@ class CloseDomeFlap(BaseResponse):
             except Exception, e:
                 manager.broadCast(e)
 
-class StartDomeFan(BaseResponse):
+class DomeFan(BaseResponse):
 
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = StartDomeFan.dome
-        manager = StartDomeFan.manager
+        dome = DomeFan.dome
+        manager = DomeFan.manager
 
         domefan = dome.getManager().getProxy(check.fan)
 
@@ -264,21 +264,6 @@ class StartDomeFan(BaseResponse):
         #     manager.setFlag("domefan",IOFlag.OPERATING)
         #     if not domefan.isFanRunning():
         #         domefan.startFan()
-
-class StopDomeFan(BaseResponse):
-
-    @staticmethod
-    @requires("domefan")
-    def process(check):
-        domefan = StopDomeFan.domefan
-        manager = StartDomeFan.manager
-
-        try:
-            manager.setFlag("domefan",
-                            IOFlag.OPEN)
-        except Exception, e:
-            manager.broadCast(e)
-        domefan.stopFan()
 
 class LockInstrument(BaseResponse):
     @staticmethod
