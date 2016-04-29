@@ -1,7 +1,7 @@
 
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
-                                               CheckDewPoint, CheckDew,
+                                               CheckDewPoint, CheckDew, AskListener,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
@@ -9,7 +9,7 @@ from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler,
                                                   WindSpeedHandler, DewPointHandler,
-                                                  DewHandler)
+                                                  DewHandler, AskListenerHandler)
 from chimera_manager.controllers import baseresponse
 from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
@@ -42,7 +42,7 @@ class CheckList(object):
                               CheckWindSpeed:   WindSpeedHandler,
                               CheckDewPoint:    DewPointHandler,
                               CheckDew:         DewHandler,
-
+                              AskListener:      AskListenerHandler
                               }
         self.itemsList = {}
         self.responseList = {}
@@ -123,7 +123,7 @@ class CheckList(object):
                 self.controller.checkBegin(check, logMsg)
 
                 i_status,i_msg = self.currentHandler.process(check) # return response id
-                status = i_status and (item.eager or i_status != item.status)
+                status = i_status and (item.eager or (i_status != item.status))
                 msg += i_msg
 
                 if self.mustStop.isSet():
@@ -236,6 +236,14 @@ class CheckList(object):
             return
 
         if issubclass(handler, baseresponse.BaseResponse):
+            try:
+                setattr(handler, "manager",
+                            self.controller.getManager().getProxy(self.controller.getLocation()))
+            except Exception, e:
+                self.log.error("Could not inject `manager` to %s response"%(handler))
+                self.log.exception(e)
+
+        if issubclass(handler, CheckHandler):
             try:
                 setattr(handler, "manager",
                             self.controller.getManager().getProxy(self.controller.getLocation()))
