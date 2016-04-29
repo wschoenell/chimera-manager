@@ -250,12 +250,14 @@ class CheckInstrumentFlag(Check):
     id       = Column(Integer, ForeignKey('check.id'), primary_key=True)
     instrument = Column(String)
     flag = Column(String)
+    mode = Column(Integer)
 
     # response   = relation("Response", backref=backref("question", order_by="Response.list_id"),
     #                      cascade="all, delete, delete-orphan")
-    def __init__(self, instrument='', flag=''):
+    def __init__(self, instrument='', flag='', mode=0):
         self.instrument = instrument
         self.flag = flag
+        self.mode = mode
 
     def __str__(self):
         return "[CheckInstrumentFlag] %s.%s" % (self.instrument,self.flag)

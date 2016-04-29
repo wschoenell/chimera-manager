@@ -500,7 +500,10 @@ class InstrumentFlagHandler(CheckHandler):
 
         ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
 
-        msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
+        if check.mode == 1:
+            ret = not ret
+
+        msg = "%s: %s flag is %s/%s" % (ret, check.instrument, check.flag.upper())
 
         return ret, msg
 
