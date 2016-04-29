@@ -371,6 +371,26 @@ class SendTelegram(Response):
     def __str__(self):
         return "[SendTelegram]: %s" % (self.message)
 
+class DomeFan(Response):
+    __tablename__ = "domefan"
+    __mapper_args__ = {'polymorphic_identity': 'DomeFan'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    fan = Column(String)
+    mode = Column(Integer)
+    speed = Column(Float)
+    direction = Column(String)
+
+    def __init__(self,fan='/Fan/0',mode=0,speed=0.,direction='FORWARD'):
+        self.response_id = self.__tablename__.upper()
+        self.fan = fan
+        self.mode = mode
+        self.speed = speed
+        self.direction = direction
+
+    def __str__(self):
+        return "[DomeFan]: %s" % (self.fan)
+
 class ActivateItem(Response):
     __tablename__ = "activateitem"
     __mapper_args__ = {'polymorphic_identity': 'ActivateItem'}

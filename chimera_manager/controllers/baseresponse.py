@@ -229,17 +229,41 @@ class CloseDomeFlap(BaseResponse):
 class StartDomeFan(BaseResponse):
 
     @staticmethod
-    @requires("domefan")
+    @requires("dome")
     def process(check):
-        domefan = StartDomeFan.domefan
+        dome = StartDomeFan.dome
         manager = StartDomeFan.manager
 
+        domefan = dome.getManager().getProxy(check.fan)
+
+        if domefan.isSwitchedOn():
+            manager.broadCast("Fan is already running... ")
+
+        try:
+            if check.mode == 0:
+                if domefan.switchOn():
+                    manager.broadCast("Dome fan started")
+                else:
+                    manager.broadCast("Could not start dome fan")
+            elif check.mode == 1:
+                if domefan.switchOff():
+                    manager.broadCast("Dome fan stopped")
+                else:
+                    manager.broadCast("Could not stop dome fan")
+
+        except Exception, e:
+            manager.broadCast("Could not start dome fan. %s" % repr(e))
+
+    @staticmethod
+    def model():
+        return model.DomeFan
+
         # Check if domefan can be opened
-        if manager.getFlag("domefan") == IOFlag.OPEN:
-            # Switch flag to OPERATING
-            manager.setFlag("domefan",IOFlag.OPERATING)
-            if not domefan.isFanRunning():
-                domefan.startFan()
+        # if manager.getFlag("domefan") == IOFlag.OPEN:
+        #     # Switch flag to OPERATING
+        #     manager.setFlag("domefan",IOFlag.OPERATING)
+        #     if not domefan.isFanRunning():
+        #         domefan.startFan()
 
 class StopDomeFan(BaseResponse):
 
