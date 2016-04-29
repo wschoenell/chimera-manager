@@ -49,6 +49,7 @@ class StopAll(BaseResponse):
 
         try:
             telescope = StopAll.telescope
+            # manager.broadCast("Stopping Telescope")
             if telescope.isTracking():
                 telescope.stopTracking()
         except NotImplementedError, e:
@@ -70,13 +71,13 @@ class StopAll(BaseResponse):
         # dome.stand()
         # dome.close()
 
-        try:
-            camera = StopAll.camera
-            manager.setFlag("camera",IOFlag.CLOSE)
-
-            camera.abortExposure(readout=False)
-        except:
-            pass
+        # try:
+        #     camera = StopAll.camera
+        #     manager.setFlag("camera",IOFlag.CLOSE)
+        #
+        #     camera.abortExposure(readout=False)
+        # except:
+        #     pass
 
 class UnparkTelescope(BaseResponse):
 
