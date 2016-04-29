@@ -445,3 +445,48 @@ class DomeHandler(CheckHandler):
     def log(check):
         return "%s"%(check)
 
+
+class TelescopeHandler(CheckHandler):
+    '''
+    This class checks telescope operations
+
+    Process will return True if dew point is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("telescope")
+    def process(check):
+        telescope = TelescopeHandler.telescope
+
+        ret,msg = False, ""
+
+        if check.mode == 1:
+            ret = telescope.isParked()
+            msg = "Telescope is parked." if ret else "Telescope is unparked"
+        elif check.mode == -1:
+            ret = not telescope.isParked()
+            msg = "Telescope is unparked." if ret else "Telescope is parked"
+        elif check.mode == 2:
+            ret = telescope.isCoverOpen()
+            msg = "Telescope cover is open" if ret else "Telescope cover is closed"
+        elif check.mode == -2:
+            ret = not telescope.isCoverOpen()
+            msg = "Telescope cover is closed" if ret else "Telescope cover is open"
+        elif check.mode == 3:
+            ret = telescope.isSlewing()
+            msg = "Telescope slewing" if ret else "Telescope not slewing"
+        elif check.mode == -3:
+            ret = not telescope.isSlewing()
+            msg = "Telescope not slewing" if ret else "Telescope slewing"
+        elif check.mode == 4:
+            ret = telescope.isTracking()
+            msg = "Telescope tracking" if ret else "Telescope not tracking"
+        elif check.mode == -4:
+            ret = not telescope.isTracking()
+            msg = "Telescope not tracking" if ret else "Telescope tracking"
+
+
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)

@@ -62,6 +62,19 @@ class CheckDome(Check):
     def __str__(self):
         return "CheckDome: mode %i" % self.mode
 
+class CheckTelescope(Check):
+    __tablename__ = "checktelescope"
+    __mapper_args__ = {'polymorphic_identity': 'CheckTelescope'}
+    id = Column(Integer, ForeignKey('check.id'), primary_key=True)
+
+    mode = Column(Integer,default=0)   # Operation mode
+
+    def __init__(self, mode=0):
+        self.mode= int(mode)
+
+    def __str__(self):
+        return "CheckTelescope: mode %i" % self.mode
+
 class CheckTime(Check):
     __tablename__ = "checktime"
     __mapper_args__ = {'polymorphic_identity': 'CheckTime'}
