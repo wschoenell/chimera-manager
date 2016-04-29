@@ -26,7 +26,7 @@ class Supervisor(ChimeraObject):
                     "dome"       : "/Dome/0",
                     "scheduler"  : None,
                     "domefan"    : None,
-                    "weatherstation" : None,
+                    "weatherstations" : None,
                     "telegram-token": None,       # Telegram host IP
                     "telegram-chatid": None,     # Telegram host port
                     "freq": 0.01               # Set manager watch frequency in Hz.
@@ -76,6 +76,8 @@ class Supervisor(ChimeraObject):
         self._connectSchedulerEvents()
 
         self.setHz(self["freq"])
+
+        self["weatherstations"] = self["weatherstations"].split(",")
 
     def __stop__(self):
 

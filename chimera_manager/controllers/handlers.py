@@ -96,12 +96,23 @@ class HumidityHandler(CheckHandler):
     '''
     @staticmethod
     @requires("site")
-    @requires("weatherstation")
+    @requires("weatherstations")
     def process(check):
-        weatherstation = HumidityHandler.weatherstation
+
+        weatherstations = HumidityHandler.weatherstations
         site = HumidityHandler.site
 
-        humidity = weatherstation.humidity()
+        manager = HumidityHandler.manager
+
+        humidity = None
+        for i in range(len(weatherstations)):
+            h = weatherstations[i].humidity()
+            if datetime.datetime.utcnow() - h.time < datetime.timedelta(minutes=manager["max_mins"]):
+                humidity = h
+                break
+        if humidity is None:
+            return True, "No valid weather station data available!"
+
         if check.mode == 0: # True if value is higher
             ret = check.humidity < humidity.value
             msg = "Humidity OK (%.2f/%.2f)"%(humidity.value,check.humidity) if not ret \
@@ -141,12 +152,22 @@ class TemperatureHandler(CheckHandler):
     '''
     @staticmethod
     @requires("site")
-    @requires("weatherstation")
+    @requires("weatherstations")
     def process(check):
-        weatherstation = TemperatureHandler.weatherstation
+        weatherstations = TemperatureHandler.weatherstations
         site = TemperatureHandler.site
 
-        temperature = weatherstation.temperature()
+        manager = TemperatureHandler.manager
+
+        temperature = None
+        for i in range(len(weatherstations)):
+            t = weatherstations[i].temperature()
+            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                humidity = t
+                break
+        if temperature is None:
+            return True, "No valid weather station data available!"
+
         if check.mode == 0:
             ret = check.temperature > temperature.value
             msg = "Temperature OK (%.2f/%.2f)"%(temperature.value,
@@ -187,12 +208,22 @@ class WindSpeedHandler(CheckHandler):
     '''
     @staticmethod
     @requires("site")
-    @requires("weatherstation")
+    @requires("weatherstations")
     def process(check):
-        weatherstation = WindSpeedHandler.weatherstation
+        weatherstations = WindSpeedHandler.weatherstations
         site = WindSpeedHandler.site
 
-        windspeed = weatherstation.wind_speed()
+        manager = WindSpeedHandler.manager
+
+        windspeed = None
+        for i in range(len(weatherstations)):
+            s = weatherstations[i].wind_speed()
+            if datetime.datetime.utcnow() - s.time < datetime.timedelta(minutes=manager["max_mins"]):
+                windspeed = s
+                break
+        if windspeed is None:
+            return True, "No valid weather station data available!"
+
         if check.mode == 0:
             ret = check.windspeed < windspeed.value
             msg = "Wind speed OK (%.2f/%.2f)"%(windspeed.value,
@@ -232,9 +263,9 @@ class DewPointHandler(CheckHandler):
     Process will return True if dew point is bellow specified threshold  or False, otherwise.
     '''
     @staticmethod
-    @requires("weatherstation")
+    @requires("weatherstations")
     def process(check):
-        weatherstation = DewPointHandler.weatherstation
+        weatherstation = DewPointHandler.weatherstations
 
         ret = check.dewpoint > weatherstation.dew_point()
         msg = "Dew point OK" if not ret else "Dew point lower than specified threshold"
@@ -252,13 +283,26 @@ class DewHandler(CheckHandler):
     '''
     @staticmethod
     @requires("site")
-    @requires("weatherstation")
+    @requires("weatherstations")
     def process(check):
-        weatherstation = DewHandler.weatherstation
+        weatherstations = DewHandler.weatherstations
         site = DewHandler.site
 
-        temperature = weatherstation.temperature()
-        dewpoint = weatherstation.dew_point()
+        temperature = None # weatherstation.temperature()
+        dewpoint = None # weatherstation.dew_point()
+
+        manager = DewHandler.manager
+
+        for i in range(len(weatherstations)):
+            t = weatherstations[i].temperature()
+            d = weatherstations[i].dew_point()
+            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                temperature = t
+                dewpoint = d
+                break
+        if (temperature is None) or (dewpoint is None):
+            return True, "No valid weather station data available!"
+
         tempdiff = ( temperature.value - dewpoint.value )
 
         if check.mode == 0:
@@ -293,3 +337,43 @@ class DewHandler(CheckHandler):
     def log(check):
         return "%s"%(check)
 
+
+class DomeSlitOpenHandler(CheckHandler):
+    '''
+    This class checks if dome slit is open.
+
+    Process will return True if dew point is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("dome")
+    def process(check):
+        dome = DomeSlitOpenHandler.dome
+
+        ret = dome.isSlitOpen()
+        msg = "Dome slit open" if ret else "Dome slit closed"
+
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
+class DomeSlitClosedHandler(CheckHandler):
+    '''
+    This class checks if dome slit is closed.
+
+    Process will return True if dew point is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("dome")
+    def process(check):
+        dome = DomeSlitClosedHandler.dome
+
+        ret = dome.isSlitOpen()
+        msg = "Dome slit closed" if ret else "Dome slit open"
+
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)

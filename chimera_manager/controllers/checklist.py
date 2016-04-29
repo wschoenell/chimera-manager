@@ -35,7 +35,7 @@ class CheckList(object):
 
         self.controller = controller
         self.log = controller.log
-        
+
         self.checkHandlers = {CheckTime:        TimeHandler,
                               CheckHumidity:    HumidityHandler,
                               CheckTemperature: TemperatureHandler,
@@ -248,8 +248,20 @@ class CheckList(object):
 
         for instrument in handler.process.__requires__:
             try:
-                setattr(handler, instrument,
-                       self.controller.getManager().getProxy(self.controller[instrument]))
+                if instrument == "weatherstations":
+                    ws_list = []
+                    for i, ws in enumerate(self.controller[instrument]):
+                        try:
+                            ws_manager = self.controller.getManager().getProxy(ws)
+                            ws_list.append(ws_manager)
+                        except Exception, e:
+                            self.log.error('Could not inject weather station %i on %s handler' % (i,
+                                                                                                  handler))
+                    if len(ws_list) > 0:
+                        setattr(handler, instrument, ws_list)
+                else:
+                    setattr(handler, instrument,
+                            self.controller.getManager().getProxy(self.controller[instrument]))
             except ObjectNotFoundException, e:
                 self.log.error("No instrument to inject on %s handler" % handler)
             except InvalidLocationException, e:
