@@ -106,6 +106,7 @@ class CheckList(object):
             return
 
         status = False
+        run_status = False
         msg = ''
         for check in item.check:
 
@@ -127,7 +128,12 @@ class CheckList(object):
                 self.controller.checkBegin(check, logMsg)
 
                 i_status,i_msg = self.currentHandler.process(check) # return response id
-                status = i_status and (item.eager or (i_status != item.status))
+                # self.log.debug("%s and (%s or (%s != %s)) = %s" % (i_status,
+                #                                                    item.eager,
+                #                                                    i_status,
+                #                                                    item.status))
+                status = i_status
+                run_status = i_status and (item.eager or (i_status != item.status))
                 msg += i_msg
 
                 if self.mustStop.isSet():
@@ -149,7 +155,7 @@ class CheckList(object):
 
         self.log.debug("[start] %s: %s " % (status,msg))
 
-        if status:
+        if run_status:
 
             self.controller.itemStatusChanged(item,status)
             # Get response

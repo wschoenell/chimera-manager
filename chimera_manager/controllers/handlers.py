@@ -275,6 +275,66 @@ class DewPointHandler(CheckHandler):
     def log(check):
         return "%s"%(check)
 
+class TransparencyHandler(CheckHandler):
+    '''
+    This class checks if dew point is above or bellow some threshold.
+
+    Process will return True if dew point is bellow specified threshold  or False, otherwise.
+    '''
+    @staticmethod
+    @requires("weatherstations")
+    def process(check):
+        weatherstations = WindSpeedHandler.weatherstations
+        site = WindSpeedHandler.site
+
+        manager = WindSpeedHandler.manager
+
+        transparency = None
+        for i in range(len(weatherstations)):
+            try:
+                t = weatherstations[i].sky_transparency()
+                if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    transparency = t
+                    break
+            except:
+                pass
+
+        if transparency is None:
+            return True, "No valid weather station data available!"
+
+        if check.mode == 0:
+            ret = check.transparency > transparency.value
+            msg = "Sky transparency OK (%.2f/%.2f)"%(transparency.value,
+                                               check.transparency) if not ret \
+                else "Sky transparency lower than specified threshold (%.2f/%.2f)"%(transparency.value,
+                                                                                    check.transparency)
+            return ret, msg
+
+        elif check.mode == 1: # True if value is lower for more than the specified number of hours
+            ret = check.transparency < transparency.value
+            msg = "Nothing to do. Sky transparency lower than threshold (%.2f/%.2f)." % \
+                  (transparency.value,check.transparency) if not ret \
+                else "Sky transparency higher than threshold (%.2f/%.2f)."%(transparency.value,check.transparency)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s"%(check)
+
 class AskListenerHandler(CheckHandler):
 
     @staticmethod

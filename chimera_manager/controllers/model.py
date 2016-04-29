@@ -193,6 +193,26 @@ class CheckDew(Check):
     def __str__ (self):
         return "checkdew: threshold %.2f " % (self.tempdiff)
 
+class CheckTransparency(Check):
+    __tablename__ = "checktransparency"
+    __mapper_args__ = {'polymorphic_identity': 'CheckTransparency'}
+
+    id     = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    transparency = Column(Float, default=0.0) # The desired difference in temperature and dew point
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None) # A reference time
+    mode = Column(Integer,default=0)  # Select the mode of operation:
+    # 0 - True if humidity is higher than specified
+    # 1 - True if humidity is lower than specified and time is larger than the desired interval
+
+    def __init__(self, transparency=0.,deltaTime=0.,mode=0):
+        self.transparency= float(transparency)
+        self.deltaTime= deltaTime
+        self.mode= mode
+
+    def __str__ (self):
+        return "checktransparency: threshold %.2f " % (self.transparency)
+
 class AskListener(Check):
     __tablename__ = "asklistener"
     __mapper_args__ = {'polymorphic_identity': 'AskListener'}
