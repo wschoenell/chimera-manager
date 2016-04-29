@@ -2,14 +2,14 @@
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
                                                CheckDewPoint, CheckDew, AskListener,
-                                               CheckDome,
+                                               CheckDome, CheckTransparency, CheckInstrumentFlag,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
 
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
-                                                  HumidityHandler, TemperatureHandler,
-                                                  WindSpeedHandler, DewPointHandler,
+                                                  HumidityHandler, TemperatureHandler, TransparencyHandler,
+                                                  WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
                                                   DewHandler, AskListenerHandler,
                                                   DomeHandler)
 from chimera_manager.controllers import baseresponse
@@ -46,7 +46,8 @@ class CheckList(object):
                               CheckDew:         DewHandler,
                               AskListener:      AskListenerHandler,
                               CheckDome: DomeHandler,
-
+                              CheckTransparency: TransparencyHandler,
+                              CheckInstrumentFlag: InstrumentFlagHandler,
                               }
         self.itemsList = {}
         self.responseList = {}

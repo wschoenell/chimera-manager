@@ -490,3 +490,20 @@ class TelescopeHandler(CheckHandler):
     @staticmethod
     def log(check):
         return "%s"%(check)
+
+class InstrumentFlagHandler(CheckHandler):
+
+    @staticmethod
+    def process(check):
+        manager = InstrumentFlagHandler.manager()
+        from chimera_manager.controllers.status import InstrumentOperationFlag
+
+        ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
+
+        msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
+
+        return ret, msg
+
+    @staticmethod
+    def log(check):
+        return '%s' % check
