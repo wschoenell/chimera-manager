@@ -149,6 +149,7 @@ class CheckList(object):
             except Exception, e:
                 self.log.debug("Exception in check routine: %s" % repr(e))
                 self.controller.checkComplete(check, FlagStatus.ERROR)
+                run_status = False
                 status = False
                 break
             else:

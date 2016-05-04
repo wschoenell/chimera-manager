@@ -495,7 +495,7 @@ class InstrumentFlagHandler(CheckHandler):
 
     @staticmethod
     def process(check):
-        manager = InstrumentFlagHandler.manager()
+        manager = InstrumentFlagHandler.manager
         from chimera_manager.controllers.status import InstrumentOperationFlag
 
         ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
