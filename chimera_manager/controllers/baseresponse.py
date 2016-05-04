@@ -147,6 +147,7 @@ class OpenDomeSlit(BaseResponse):
 
                 # I will only try to open the slit if I can set the flag to operating
                 if not dome.isSlitOpen():
+                    manager.broadCast("Opening dome slit")
                     dome.openSlit()
 
             except StatusUpdateException, e:
