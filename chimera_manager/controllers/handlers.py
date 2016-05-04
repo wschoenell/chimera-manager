@@ -111,7 +111,7 @@ class HumidityHandler(CheckHandler):
                 humidity = h
                 break
         if humidity is None:
-            return True, "No valid weather station data available!"
+            return check.mode == 0, "No valid weather station data available!"
 
         if check.mode == 0: # True if value is higher
             ret = check.humidity < humidity.value
@@ -166,7 +166,7 @@ class TemperatureHandler(CheckHandler):
                 humidity = t
                 break
         if temperature is None:
-            return True, "No valid weather station data available!"
+            return check.mode == 0, "No valid weather station data available!"
 
         if check.mode == 0:
             ret = check.temperature > temperature.value
@@ -222,7 +222,7 @@ class WindSpeedHandler(CheckHandler):
                 windspeed = s
                 break
         if windspeed is None:
-            return True, "No valid weather station data available!"
+            return check.mode == 0, "No valid weather station data available!"
 
         if check.mode == 0:
             ret = check.windspeed < windspeed.value
@@ -300,7 +300,7 @@ class TransparencyHandler(CheckHandler):
                 pass
 
         if transparency is None:
-            return True, "No valid weather station data available!"
+            return check.mode == 0, "No valid weather station data available!"
 
         if check.mode == 0:
             ret = check.transparency > transparency.value
@@ -376,7 +376,7 @@ class DewHandler(CheckHandler):
                 dewpoint = d
                 break
         if (temperature is None) or (dewpoint is None):
-            return True, "No valid weather station data available!"
+            return check.mode == 0, "No valid weather station data available!"
 
         tempdiff = ( temperature.value - dewpoint.value )
 
