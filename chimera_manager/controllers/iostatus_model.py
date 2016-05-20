@@ -18,7 +18,7 @@ class InstrumentOperationStatus(Base):
     id = Column(Integer, primary_key=True)
     instrument = Column(String, default=None)
     status = Column(Integer, default=None)
-    key = Column(String, default=None) # this is a self generated key to lock an instrument. Use it to unlock
+    # key = Column(String, default=None) # this is a self generated key to lock an instrument. Use it to unlock
     keylist = relation("KeyList", backref=backref("iostatus", order_by="KeyList.key_id"),
                          cascade="all, delete, delete-orphan")    # list of keys that locks the instrument.
     lastUpdate = Column(DateTime, default=None)
@@ -27,11 +27,11 @@ class InstrumentOperationStatus(Base):
 class KeyList(Base):
 
     id         = Column(Integer, primary_key=True)
-    list_id = Column(Integer, ForeignKey("iostatus.id"))
+    key_id = Column(Integer, ForeignKey("iostatus.id"))
 
     key = Column('type', String(100))
-    addtime = Column(DateTime, default=None)
-    active = Column(Boolean, default=False)
+    updatetime = Column(DateTime, default=None)
+    active = Column(Boolean, default=True)
 
     __tablename__ = "keylist"
     # __mapper_args__ = {'polymorphic_on': check_type}

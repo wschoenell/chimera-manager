@@ -5,7 +5,7 @@ from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHu
                                                CheckDome, CheckTransparency, CheckInstrumentFlag,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
-from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
+from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus, KeyList
 
 from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler, TransparencyHandler,
@@ -193,17 +193,28 @@ class CheckList(object):
     def updateInstrumentStatus(self,instrument,status,key=None):
         session = ioSession()
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
-        session.commit()
+        iostatus_keys = session.query(KeyList).filter(KeyList.key_id == iostatus.id)
+        str_keys = [k.key for k in iostatus_keys]
+        # session.commit()
 
         if iostatus.status != InstrumentOperationFlag.LOCK.index:
             iostatus.status = status.index
             if key is not None:
-                iostatus.key = key
-        elif key == iostatus.key:
+                if key in str_keys:
+                    iostatus_keys[str_keys.index(key)].active = True
+                    iostatus_keys[str_keys.index(key)].updatetime = self.controller.site().ut().replace(tzinfo=None)
+                else:
+                    newkey = KeyList(key_id=iostatus.id,
+                                     key=key,
+                                     updatetime=self.controller.site().ut().replace(tzinfo=None),
+                                     active=True)
+                    session.add(newkey)
+        elif key in str_keys:
             iostatus.status = status.index
             if status != InstrumentOperationFlag.LOCK:
-                iostatus.key = ""
+                iostatus_keys[str_keys.index(key)].active = False
         else:
+            session.commit()
             return False
 
         session.commit()
@@ -217,9 +228,10 @@ class CheckList(object):
 
     def instrumentKey(self,instrument):
         session = ioSession()
-        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)
+        iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
+        iostatus_keys = session.query(KeyList).filter(KeyList.key_id == iostatus.id, KeyList.active == True)
 
-        return iostatus[0].key
+        return [k.keys for k in iostatus_keys]
 
     def activate(self,item):
         session = Session()
