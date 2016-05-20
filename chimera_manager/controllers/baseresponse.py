@@ -87,6 +87,7 @@ class UnparkTelescope(BaseResponse):
         telescope = UnparkTelescope.telescope
         manager = UnparkTelescope.manager
 
+        manager.broadCast("Unpark Telescope")
         try:
             telescope.unpark()
         except Exception, e:
@@ -139,15 +140,16 @@ class OpenDomeSlit(BaseResponse):
         dome = OpenDomeSlit.dome
         manager = OpenDomeSlit.manager
 
+        manager.broadCast("Opening Dome Slit")
         # Check if dome can be opened
-        if manager.canOpen():
+        if manager.canOpen("dome"):
             try:
                 manager.setFlag("dome",
                                 IOFlag.OPERATING)
 
                 # I will only try to open the slit if I can set the flag to operating
                 if not dome.isSlitOpen():
-                    manager.broadCast("Opening dome slit")
+                    # manager.broadCast("Opening dome slit")
                     dome.openSlit()
 
             except StatusUpdateException, e:
@@ -235,6 +237,7 @@ class DomeFan(BaseResponse):
         dome = DomeFan.dome
         manager = DomeFan.manager
 
+        manager.broadCast('%s' % check.fan)
         domefan = dome.getManager().getProxy(check.fan)
 
         if domefan.isSwitchedOn():
