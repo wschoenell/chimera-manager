@@ -1,4 +1,3 @@
-
 import os
 
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY

@@ -1,15 +1,9 @@
+import threading
 
-from chimera_manager.controllers.states import State
 from chimera_manager.controllers.model import Session, List
-from chimera_manager.controllers.status import OperationStatus
+from chimera_manager.controllers.states import State
 from chimera_manager.core.exceptions import CheckAborted
 
-from chimera.core.site import Site
-
-import threading
-import logging
-
-import time
 
 # log = logging.getLogger(__name__.replace("_manager",".supervisor"))
 

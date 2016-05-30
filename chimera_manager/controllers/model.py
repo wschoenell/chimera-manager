@@ -1,11 +1,11 @@
-from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
+import datetime
 
-from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey, Time, Interval,
-                        Float, PickleType, MetaData, create_engine)
+from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey, Time, Interval, Float, MetaData,
+                        create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
 
-import datetime
+from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
 
 engine = create_engine('sqlite:///%s' % DEFAULT_PROGRAM_DATABASE, echo=False)
 

@@ -6,23 +6,22 @@ __author__ = 'Ribeiro, T.'
 
 ################################################################################
 
-import sys
 import os
-import time
-import datetime as dt
-import shutil
 import re
+import shutil
+import sys
+import time
+
 import yaml
-
 from chimera.core.cli import ChimeraCLI, action, ParameterType
-from chimera.core.callback import callback
-from chimera.util.output import blue, green, red
 from chimera.core.exceptions import printException
+from chimera.util.output import blue, green, red
 
-from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera_manager.controllers.model import (List)
 from chimera_manager.controllers.model import Session
-from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
 from chimera_manager.controllers.status import InstrumentOperationFlag
+from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
+
 
 ################################################################################
 

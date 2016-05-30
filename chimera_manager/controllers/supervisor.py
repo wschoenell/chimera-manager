@@ -1,23 +1,19 @@
-
-import os
-
-from chimera_manager.controllers.machine import Machine
-from chimera_manager.controllers.checklist import CheckList
-from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
-from chimera_manager.controllers.states import State
-from chimera_manager.core.exceptions import StatusUpdateException
-from chimera_manager.core.constants import SYSTEM_CONFIG_DIRECTORY
-
-from chimera.core.chimeraobject import ChimeraObject
-from chimera.core.lock import lock
-from chimera.core.event import event
-from chimera.core.log import fmt
-
-import threading
-import telnetlib
-import telegram
 import logging
+import os
 import time
+
+import telegram
+from chimera.core.chimeraobject import ChimeraObject
+from chimera.core.event import event
+from chimera.core.lock import lock
+
+from chimera_manager.controllers.checklist import CheckList
+from chimera_manager.controllers.machine import Machine
+from chimera_manager.controllers.states import State
+from chimera_manager.controllers.status import InstrumentOperationFlag
+from chimera_manager.core.constants import SYSTEM_CONFIG_DIRECTORY
+from chimera_manager.core.exceptions import StatusUpdateException
+
 
 class Supervisor(ChimeraObject):
 
@@ -45,7 +41,7 @@ class Supervisor(ChimeraObject):
                                  "dome":            InstrumentOperationFlag.UNSET,
                                  "scheduler":       InstrumentOperationFlag.UNSET,
                                  "domefan":         InstrumentOperationFlag.UNSET,
-                                 "weatherstation":  InstrumentOperationFlag.UNSET,
+                                 "weatherstations":  InstrumentOperationFlag.UNSET,
                                  }
 
         self._telegramBroadcast = False
@@ -86,7 +82,10 @@ class Supervisor(ChimeraObject):
         self._listen_ids = None if self["telegram-listen-ids"] is None \
             else [int(id) for id in str(self["telegram-listen-ids"]).split(',')]
 
-        self["weatherstations"] = self["weatherstations"].split(",")
+        if self["weatherstations"] is not None:
+            self["weatherstations"] = self["weatherstations"].split(",")
+        else:
+            self["weatherstations"] = ['/WeatherStation/0']
 
     def __stop__(self):
 

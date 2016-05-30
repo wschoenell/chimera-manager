@@ -1,9 +1,8 @@
-from chimera_manager.core.constants import DEFAULT_STATUS_DATABASE
-
-from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
-                        Float, PickleType, MetaData, create_engine)
+from sqlalchemy import (Column, String, Integer, DateTime, MetaData, create_engine)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relation, backref
+from sqlalchemy.orm import sessionmaker
+
+from chimera_manager.core.constants import DEFAULT_STATUS_DATABASE
 
 engine = create_engine('sqlite:///%s' % DEFAULT_STATUS_DATABASE, echo=False)
 

@@ -9,5 +9,6 @@ setup(
     license='GPL v2',
     author='Tiago Ribeiro',
     author_email='tribeiro@ufs.br',
+    install_requires = ['chimera_python', 'telegram', 'sqlalchemy'],
     description='Observatory manager for chimera.'
 )

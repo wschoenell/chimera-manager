@@ -1,27 +1,21 @@
-
-from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
-                                               CheckTemperature, CheckWindSpeed,
-                                               CheckDewPoint, CheckDew, AskListener,
-                                               CheckDome, CheckTransparency, CheckInstrumentFlag,
-                                               Response)
-from chimera_manager.controllers.iostatus_model import Session as ioSession
-from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
-
-from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
-                                                  HumidityHandler, TemperatureHandler, TransparencyHandler,
-                                                  WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
-                                                  DewHandler, AskListenerHandler,
-                                                  DomeHandler)
-from chimera_manager.controllers import baseresponse
-from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
+import inspect
+import threading
+import time
 
 from chimera.core.exceptions import ObjectNotFoundException, InvalidLocationException
+
+from chimera_manager.controllers import baseresponse
+from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler, HumidityHandler, TemperatureHandler,
+                                                  TransparencyHandler, WindSpeedHandler, DewPointHandler,
+                                                  InstrumentFlagHandler, DewHandler, AskListenerHandler, DomeHandler)
+from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus
+from chimera_manager.controllers.iostatus_model import Session as ioSession
+from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity, CheckTemperature, CheckWindSpeed,
+                                               CheckDewPoint, CheckDew, AskListener, CheckDome, CheckTransparency,
+                                               CheckInstrumentFlag)
+from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 from chimera_manager.core.exceptions import CheckAborted,CheckExecutionException
 
-import logging
-import threading
-import inspect
-import time
 
 # log = logging.getLogger(__name__.replace("_manager",".supervisor"))
 

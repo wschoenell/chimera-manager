@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 from chimera.util.enum import Enum
 
 InstrumentOperationFlag = Enum("UNSET",      # No info about instrument operation condition

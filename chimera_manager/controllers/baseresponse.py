@@ -4,13 +4,15 @@ Implement basic responses to some results on the checklist. The user can impleme
 as long as they inherit the Response class.
 '''
 
-import os
 import copy
+import os
 import subprocess
+
+from chimera_manager.controllers import model
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
 from chimera_manager.core.exceptions import StatusUpdateException
-from chimera_manager.controllers import model
+
 
 class BaseResponse(object):
 
