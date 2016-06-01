@@ -29,7 +29,7 @@ class KeyList(Base):
     id         = Column(Integer, primary_key=True)
     key_id = Column(Integer, ForeignKey("iostatus.id"))
 
-    key = Column('type', String(100))
+    key = Column(String, default=None)
     updatetime = Column(DateTime, default=None)
     active = Column(Boolean, default=True)
 

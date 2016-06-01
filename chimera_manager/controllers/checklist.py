@@ -195,27 +195,47 @@ class CheckList(object):
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
         iostatus_keys = session.query(KeyList).filter(KeyList.key_id == iostatus.id)
         str_keys = [k.key for k in iostatus_keys]
+        active_keys = [k.active for k in iostatus_keys]
         # session.commit()
 
-        if iostatus.status != InstrumentOperationFlag.LOCK.index:
-            iostatus.status = status.index
-            if key is not None:
-                if key in str_keys:
+        self.log.debug("Current instrument status is %s" % InstrumentOperationFlag[iostatus.status])
+        if iostatus.status != InstrumentOperationFlag.LOCK.index: # Instrument currently unlocked
+            iostatus.status = status.index # just flip status flag
+
+            if key is not None and status == InstrumentOperationFlag.LOCK: # new status is a lock
+                if key in str_keys: # Activating existing key
                     iostatus_keys[str_keys.index(key)].active = True
                     iostatus_keys[str_keys.index(key)].updatetime = self.controller.site().ut().replace(tzinfo=None)
-                else:
+                else: # Creating new key
                     newkey = KeyList(key_id=iostatus.id,
                                      key=key,
                                      updatetime=self.controller.site().ut().replace(tzinfo=None),
                                      active=True)
                     session.add(newkey)
-        elif key in str_keys:
-            iostatus.status = status.index
-            if status != InstrumentOperationFlag.LOCK:
-                iostatus_keys[str_keys.index(key)].active = False
-        else:
-            session.commit()
-            return False
+        else: # Instrument is locked
+
+            if status != InstrumentOperationFlag.LOCK: # it is an unlock operation
+                if key in str_keys:# and key is in the list
+                    active_keys[str_keys.index(key)] = False
+                    iostatus_keys[str_keys.index(key)].active = False
+                    iostatus_keys[str_keys.index(key)].updatetime = self.controller.site().ut().replace(tzinfo=None)
+                if True not in active_keys: # able to unlock instrument
+                    iostatus.status = status.index
+                else:
+                    # Could not unlock instrument
+                    session.commit()
+                    return False
+
+            else: # it is a new lock operation
+                if key in str_keys: # Activating existing key
+                    iostatus_keys[str_keys.index(key)].active = True
+                    iostatus_keys[str_keys.index(key)].updatetime = self.controller.site().ut().replace(tzinfo=None)
+                else: # Creating new key
+                    newkey = KeyList(key_id=iostatus.id,
+                                     key=key,
+                                     updatetime=self.controller.site().ut().replace(tzinfo=None),
+                                     active=True)
+                    session.add(newkey)
 
         session.commit()
         return True
@@ -231,7 +251,7 @@ class CheckList(object):
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
         iostatus_keys = session.query(KeyList).filter(KeyList.key_id == iostatus.id, KeyList.active == True)
 
-        return [k.keys for k in iostatus_keys]
+        return [k.key for k in iostatus_keys]
 
     def activate(self,item):
         session = Session()

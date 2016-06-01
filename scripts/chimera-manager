@@ -305,7 +305,7 @@ checklist:
             flag = self._getColoredFlag(manager.getFlag(inst_))
             key = ""
             if manager.getFlag(inst_) == InstrumentOperationFlag.LOCK:
-                key = ' [%s]' % manager.getInstrumentKey(inst_)
+                key = ' %s' % manager.getInstrumentKey(inst_)
 
             self.out("- %s: %s %s"%(inst_,
                                     flag,
