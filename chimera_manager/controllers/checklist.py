@@ -101,10 +101,14 @@ class CheckList(object):
 
         self.mustStop.clear()
 
+        self.log.debug('Checking if item is active...')
         if not item.active:
+            self.log.debug('Item is inactive. skipping...')
             item.lastUpdate = self.controller.site().ut().replace(tzinfo=None)
-            item.status = FlagStatus.UNKNOWN.index
+            item.status = int(FlagStatus.UNKNOWN.index)
             return
+
+        self.log.debug('Running check list...')
 
         status = False
         run_status = False
