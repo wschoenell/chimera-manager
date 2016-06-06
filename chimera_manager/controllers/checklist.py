@@ -114,12 +114,12 @@ class CheckList(object):
         run_status = False
         msg = ''
         for check in item.check:
-
+            self.log.debug('Here...')
             # aborted?
             if self.mustStop.isSet():
                 raise CheckAborted()
             # Should be included in check?
-
+            self.log.debug('Here...')
             try:
                 self.currentCheck = check
                 try:
@@ -127,7 +127,7 @@ class CheckList(object):
                 except KeyError:
                     self.log.error("No handler to %s item. Skipping it" % check)
                     continue
-
+                self.log.debug('Here...')
                 logMsg = str(self.currentHandler.log(check))
                 self.log.debug("[start] %s " % logMsg)
                 self.controller.checkBegin(check, logMsg)
