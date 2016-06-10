@@ -140,7 +140,7 @@ class OpenDomeSlit(BaseResponse):
         manager = OpenDomeSlit.manager
 
         # Check if dome can be opened
-        if manager.canOpen():
+        if manager.canOpen("dome"):
             try:
                 manager.setFlag("dome",
                                 IOFlag.OPERATING)
