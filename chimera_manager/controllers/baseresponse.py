@@ -136,6 +136,7 @@ class OpenDomeSlit(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
+        # Deprecated! Use DomeAction instead!
         dome = OpenDomeSlit.dome
         manager = OpenDomeSlit.manager
 
@@ -169,6 +170,7 @@ class OpenDomeFlap(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
+        # Deprecated! Use DomeAction instead!
         dome = OpenDomeFlap.dome
         manager = OpenDomeFlap.manager
 
@@ -197,6 +199,7 @@ class CloseDomeSlit(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
+        # Deprecated! Use DomeAction instead!
         dome = CloseDomeSlit.dome
         manager = CloseDomeSlit.manager
 
@@ -217,6 +220,7 @@ class CloseDomeFlap(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
+        # Deprecated! Use DomeAction instead!
         dome = CloseDomeFlap.dome
         manager = CloseDomeFlap.manager
 
@@ -226,6 +230,93 @@ class CloseDomeFlap(BaseResponse):
                 dome.closeFlap()
             except Exception, e:
                 manager.broadCast(e)
+
+class DomeAction(BaseResponse):
+    '''
+    Perform Dome actions.
+    0 - Open dome slit
+    1 - Close dome slit
+    2 - Open dome flap
+    3 - Close dome flap
+    4 - Rotate dome to "parameter" angle
+    '''
+
+    @staticmethod
+    @requires("dome")
+    def process(check):
+        dome = OpenDomeFlap.dome
+        manager = OpenDomeFlap.manager
+
+        if check.mode == 0:
+            # Open Dome Slit
+            # Check if dome can be opened
+            if manager.canOpen():
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.OPERATING)
+
+                    # I will only try to open the flap if I can set the flag to operating
+                    if not dome.isFlapOpen():
+                        dome.openFlap()
+
+                except StatusUpdateException, e:
+                    manager.broadCast(e)
+                except:
+                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        pass
+        elif check.mode == 1:
+            # Close dome Slit
+            try:
+                manager.setFlag("dome",
+                                IOFlag.READY)
+            except StatusUpdateException, e:
+                manager.broadCast(e)
+            except Exception, e:
+                manager.broadCast(e)
+
+            # I will try to close the dome regardless of flag switching problems
+            if dome.isSlitOpen():
+                dome.closeSlit()
+        elif check.mode == 2:
+            # Open dome flap
+            # Check if dome can be opened
+            if manager.canOpen():
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.OPERATING)
+
+                    # I will only try to open the flap if I can set the flag to operating
+                    if not dome.isFlapOpen():
+                        dome.openFlap()
+
+                except StatusUpdateException, e:
+                    manager.broadCast(e)
+                except:
+                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        pass
+        elif check.mode == 3:
+            # Close dome flap
+            # Dome may still be operating with Flap closed. Will close without any flag changes
+            if dome.isFlapOpen():
+                try:
+                    dome.closeFlap()
+                except Exception, e:
+                    manager.broadCast(e)
+        elif check.mode == 4:
+            # Move dome to "parameter" angle
+            from chimera.util.coord import Coord
+            target = Coord.fromDMS(check.parameter) # If this fail, action won't be completed
+            dome.stand()
+            manager.broadCast("Moving dome to %s ... " % target)
+            dome.slewToAz(target)
 
 class DomeFan(BaseResponse):
 

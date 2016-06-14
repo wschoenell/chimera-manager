@@ -331,7 +331,7 @@ class SetInstrumentFlag(Response):
     instrument = Column(String)
     flag = Column(Integer)
 
-    def __init__(self,instrument='',flag=''):
+    def __init__(self,instrument='',flag=-1):
         self.response_id = self.__tablename__.upper()
         self.instrument = instrument
         self.flag = int(flag)
@@ -390,6 +390,25 @@ class DomeFan(Response):
 
     def __str__(self):
         return "[DomeFan]: %s" % (self.fan)
+
+class DomeAction(Response):
+    __tablename__ = "domeaction"
+    __mapper_args__ = {'polymorphic_identity': 'DomeAction'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    dome = Column(String)
+    mode = Column(Integer)
+    parameter = Column(String)
+
+    def __init__(self,dome='/Dome/0',mode=0,parameter=''):
+        self.response_id = self.__tablename__.upper()
+        self.dome = dome
+        self.mode = mode
+        self.parameter = parameter
+
+    def __str__(self):
+        return "[DomeAction]: %i %s" % (self.mode,
+                                        self.parameter)
 
 class ActivateItem(Response):
     __tablename__ = "activateitem"
