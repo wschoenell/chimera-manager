@@ -115,6 +115,12 @@ class Supervisor(ChimeraObject):
 
         return True
 
+    def wakeup(self):
+        if self.machine.state() == State.OFF:
+            self.machine.state(State.START)
+            return True
+        else:
+            return False
 
     def start(self):
         if self.machine.state() == State.OFF:
