@@ -402,7 +402,7 @@ class SetInstrumentFlag(BaseResponse):
         manager = SetInstrumentFlag.manager
 
         manager.setFlag(check.instrument,
-                        check.flag)
+                        IOFlag[check.flag])
     @staticmethod
     def model():
         return model.SetInstrumentFlag
