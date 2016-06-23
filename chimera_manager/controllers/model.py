@@ -410,32 +410,19 @@ class DomeAction(Response):
         return "[DomeAction]: %i %s" % (self.mode,
                                         self.parameter)
 
-class ActivateItem(Response):
-    __tablename__ = "activateitem"
-    __mapper_args__ = {'polymorphic_identity': 'ActivateItem'}
 
-    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
-    item = Column(String)
+class ConfigureScheduler(Response):
+    __tablename__ = "configurescheduler"
+    __mapper_args__ = {'polymorphic_identity': 'ConfigureScheduler'}
 
-    def __init__(self,item=''):
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    filename = Column(String)
+
+    def __init__(self,filename=''):
         self.response_id = self.__tablename__.upper()
-        self.item = item.upper()
+        self.filename = filename
 
     def __str__(self):
-        return "Activate: %s"%(self.item)
-
-class DeactivateItem(Response):
-    __tablename__ = "deactivateitem"
-    __mapper_args__ = {'polymorphic_identity': 'DeactivateItem'}
-
-    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
-    item = Column(String)
-
-    def __init__(self,item=''):
-        self.response_id = self.__tablename__.upper()
-        self.item = item.upper()
-
-    def __str__(self):
-        return "Deactivate: %s"%(self.item)
+        return "[ConfigureScheduler]: %s" % self.filename
 
 metaData.create_all(engine)

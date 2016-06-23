@@ -12,6 +12,8 @@ from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.lock import lock
 from chimera.core.event import event
 from chimera.core.log import fmt
+from chimera.controllers.scheduler.states import State as SchedState
+from chimera.controllers.scheduler.status import SchedulerStatus as SchedStatus
 
 import threading
 import telnetlib
@@ -218,6 +220,9 @@ class Supervisor(ChimeraObject):
     def getTel(self):
         return self.getManager().getProxy(self["telescope"])
 
+    def getSched(self):
+        return self.getManager().getProxy(self["scheduler"])
+
     def getItems(self):
         return self.checklist.itemsList
 
@@ -309,6 +314,20 @@ class Supervisor(ChimeraObject):
 
         return True
 
+    def _connectSchedulerEvents(self):
+
+        sched = self.getSched()
+        if not sched:
+            self.log.warning("Couldn't find telescope.")
+            return False
+
+        sched.programBegin += self.getProxy()._watchProgramBegin
+        sched.programComplete += self.getProxy()._watchProgramComplete
+        # sched.actionBegin += self.getProxy()._watchActionBegin
+        # sched.actionComplete += self.getProxy()._watchActionComplete
+        sched.stateChanged += self.getProxy()._watchStateChanged
+
+
     def _disconnectTelescopeEvents(self):
         tel = self.getTel()
         if not tel:
@@ -322,17 +341,38 @@ class Supervisor(ChimeraObject):
         tel.parkComplete -= self.getProxy()._watchTelescopePark
         tel.unparkComplete -= self.getProxy()._watchTelescopeUnpark
 
-    def _watchSlewBegin(self):
-        self.setFlag("telescope",InstrumentOperationFlag.OPERATING)
+    def _disconnectSchedulerEvents(self):
 
-    def _watchSlewComplete(self):
-        pass
+        sched = self.getSched()
+        if not sched:
+            self.log.warning("Couldn't find telescope.")
+            return False
 
-    def _watchTrackingStarted(self):
+        sched.programBegin -= self.getProxy()._watchProgramBegin
+        sched.programComplete -= self.getProxy()._watchProgramComplete
+        # sched.actionBegin -= self.getProxy()._watchActionBegin
+        # sched.actionComplete -= self.getProxy()._watchActionComplete
+        sched.stateChanged -= self.getProxy()._watchStateChanged
+
+    def _connectDomeEvents(self):
         # Todo
         pass
 
-    def _watchTrackingStopped(self):
+    def _disconnectDomeEvents(self):
+        # Todo
+        pass
+
+    def _watchSlewBegin(self, target):
+        self.setFlag("telescope",InstrumentOperationFlag.OPERATING)
+
+    def _watchSlewComplete(self, position, status):
+        pass
+
+    def _watchTrackingStarted(self, position):
+        # Todo
+        pass
+
+    def _watchTrackingStopped(self, position, status):
         self.setFlag("telescope",InstrumentOperationFlag.READY)
 
     def _watchTelescopePark(self):
@@ -347,21 +387,31 @@ class Supervisor(ChimeraObject):
         self.setFlag("telescope",InstrumentOperationFlag.READY)
         self.setFlag("dome",InstrumentOperationFlag.READY)
 
-    def _connectDomeEvents(self):
-        # Todo
-        pass
+    def _watchProgramBegin(self,program):
+        if self.getFlag("scheduler") != InstrumentOperationFlag.OPERATING:
+            self.setFlag("scheduler",InstrumentOperationFlag.OPERATING)
 
-    def _disconnectDomeEvents(self):
-        # Todo
-        pass
+    def _watchProgramComplete(self, program, status, message=None):
+        if status == SchedStatus.ERROR:
+            msg = "Scheduler in ERROR"
+            if message is not None:
+                msg += ": %s" % message
+            self.broadCast(msg)
+            self.setFlag("scheduler",InstrumentOperationFlag.ERROR)
+            # should I take any action regarding the telescope or even the scheduler itself?
+            # Maybe stop the telescope? park the telescope? Or, I could have an action that, if the scheduler is in
+            # error it will ask if it should close the telescope. Then, in the next cycle the action will take effect
+        elif status == SchedStatus.ABORTED:
+            self.setFlag("scheduler",InstrumentOperationFlag.READY)
+            if message is not None:
+                self.broadCast('%s' % message)
 
-    def _connectSchedulerEvents(self):
-        # Todo
-        pass
+    def _watchStateChanged(self, newState, oldState):
 
-    def _disconnectSchedulerEvents(self):
-        # Todo
-        pass
+        if newState == SchedState.BUSY:
+            self.setFlag("scheduler",InstrumentOperationFlag.OPERATING)
+        else:
+            self.setFlag("scheduler",InstrumentOperationFlag.READY)
 
     @lock
     def status(self,new=None):

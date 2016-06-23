@@ -79,158 +79,6 @@ class StopAll(BaseResponse):
         # except:
         #     pass
 
-class UnparkTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = UnparkTelescope.telescope
-        manager = UnparkTelescope.manager
-
-        try:
-            telescope.unpark()
-        except Exception, e:
-            manager.broadCast(e)
-
-class ParkTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = ParkTelescope.telescope
-        manager = ParkTelescope.manager
-
-        try:
-            telescope.park()
-        except Exception, e:
-            manager.broadCast(e)
-
-class OpenTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = OpenTelescope.telescope
-        manager = OpenTelescope.manager
-
-        try:
-            telescope.openCover()
-        except Exception, e:
-            manager.broadCast(e)
-
-class CloseTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = OpenTelescope.telescope
-        manager = OpenTelescope.manager
-
-        try:
-            telescope.closeCover()
-        except Exception, e:
-            manager.broadCast(e)
-
-class OpenDomeSlit(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        # Deprecated! Use DomeAction instead!
-        dome = OpenDomeSlit.dome
-        manager = OpenDomeSlit.manager
-
-        # Check if dome can be opened
-        if manager.canOpen("dome"):
-            try:
-                manager.setFlag("dome",
-                                IOFlag.OPERATING)
-
-                # I will only try to open the slit if I can set the flag to operating
-                if not dome.isSlitOpen():
-                    manager.broadCast("Opening dome slit")
-                    dome.openSlit()
-
-            except StatusUpdateException, e:
-                manager.broadCast(e)
-            except Exception, e:
-                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                # Should I also try to close the slit?
-                manager.broadCast(e)
-                try:
-
-                    manager.setFlag("dome",
-                                    IOFlag.ERROR)
-
-                except:
-                    pass
-
-class OpenDomeFlap(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        # Deprecated! Use DomeAction instead!
-        dome = OpenDomeFlap.dome
-        manager = OpenDomeFlap.manager
-
-        # Check if dome can be opened
-        if manager.canOpen():
-            try:
-                manager.setFlag("dome",
-                                IOFlag.OPERATING)
-
-                # I will only try to open the flap if I can set the flag to operating
-                if not dome.isFlapOpen():
-                    dome.openFlap()
-
-            except StatusUpdateException, e:
-                manager.broadCast(e)
-            except:
-                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                try:
-                    manager.setFlag("dome",
-                                    IOFlag.ERROR)
-                except:
-                    pass
-
-class CloseDomeSlit(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        # Deprecated! Use DomeAction instead!
-        dome = CloseDomeSlit.dome
-        manager = CloseDomeSlit.manager
-
-        try:
-            manager.setFlag("dome",
-                            IOFlag.READY)
-        except StatusUpdateException, e:
-            manager.broadCast(e)
-        except Exception, e:
-            manager.broadCast(e)
-
-        # I will try to close the dome regardless of flag switching problems
-        if dome.isSlitOpen():
-            dome.closeSlit()
-
-class CloseDomeFlap(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        # Deprecated! Use DomeAction instead!
-        dome = CloseDomeFlap.dome
-        manager = CloseDomeFlap.manager
-
-        # Dome may still be operating with Flap closed. Will close without any flap changes
-        if dome.isFlapOpen():
-            try:
-                dome.closeFlap()
-            except Exception, e:
-                manager.broadCast(e)
-
 class DomeAction(BaseResponse):
     '''
     Perform Dome actions.
@@ -244,8 +92,8 @@ class DomeAction(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = OpenDomeFlap.dome
-        manager = OpenDomeFlap.manager
+        dome = DomeAction.dome
+        manager = DomeAction.manager
 
         if check.mode == 0:
             # Open Dome Slit
@@ -317,6 +165,35 @@ class DomeAction(BaseResponse):
             dome.stand()
             manager.broadCast("Moving dome to %s ... " % target)
             dome.slewToAz(target)
+
+class TelescopeAction(BaseResponse):
+
+    @staticmethod
+    @requires("telescope")
+    def process(check):
+        tel = TelescopeAction.telescope
+        manager = TelescopeAction.manager
+
+        if check.mode == 0:
+            try:
+                tel.unpark()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 1:
+            try:
+                tel.park()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 2:
+            try:
+                tel.openCover()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 3:
+            try:
+                tel.closeCover()
+            except Exception, e:
+                manager.broadCast(e)
 
 class DomeFan(BaseResponse):
 
@@ -440,6 +317,20 @@ class Question(BaseResponse):
     def model():
         return model.Question
 
+class StartScheduler(BaseResponse):
+
+    @staticmethod
+    @requires("scheduler")
+    def process(check):
+        sched = StartScheduler.scheduler
+        manager = BaseResponse.manager
+
+        manager.setFlag("scheduler",
+                        IOFlag.OPERATING)
+
+        sched.start()
+
+
 class ConfigureScheduler(BaseResponse):
     @staticmethod
     @requires("scheduler")
@@ -470,7 +361,8 @@ class ConfigureScheduler(BaseResponse):
 
         def generateDatabase(options):
 
-            with open(options.filename, 'r') as stream:
+            with open(os.path.join(os.path.expanduser('~/'),
+                    options.filename), 'r') as stream:
                 try:
                     prgconfig = yaml.load(stream)
                 except yaml.YAMLError as exc:
@@ -543,5 +435,10 @@ class ConfigureScheduler(BaseResponse):
             manager.setFlag("scheduler",
                             IOFlag.ERROR)
         else:
+            manager.setFlag("scheduler",
+                            IOFlag.READY)
             manager.broadCast("Scheduler configured. Restart it to run with the new database.")
 
+    @staticmethod
+    def model():
+        return model.ConfigureScheduler
