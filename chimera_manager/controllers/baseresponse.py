@@ -440,28 +440,108 @@ class Question(BaseResponse):
     def model():
         return model.Question
 
-class ActivateItem(BaseResponse):
+class ConfigureScheduler(BaseResponse):
     @staticmethod
+    @requires("scheduler")
     def process(check):
+
+        import yaml
+        from chimera.util.position import Position
+        from chimera.controllers.scheduler.model import (Session, Program, AutoFocus, AutoFlat,
+                                                 PointVerify, Point,
+                                                 Expose)
+
+        actionDict = {'autofocus' : AutoFocus,
+                      'autoflat'  : AutoFlat,
+                      'pointverify' : PointVerify,
+                      'point' : Point,
+                      'expose' : Expose,
+              }
+
         manager = BaseResponse.manager
-        manager = copy.copy(manager)
+        sched = ConfigureScheduler.scheduler
 
-        manager.broadCast("Activating item %s " % check.item)
-        manager.activate(check.item)
+        # delete all programs
+        session = Session()
+        programs = session.query(Program).all()
+        for program in programs:
+            session.delete(program)
+        session.commit()
 
-    @staticmethod
-    def model():
-        return model.ActivateItem
+        def generateDatabase(options):
 
-class DeactivateItem(BaseResponse):
-    @staticmethod
-    def process(check):
-        manager = BaseResponse.manager
-        manager = copy.copy(manager)
+            with open(options.filename, 'r') as stream:
+                try:
+                    prgconfig = yaml.load(stream)
+                except yaml.YAMLError as exc:
 
-        manager.broadCast("Deactivating item %s " % check.item)
-        manager.deactivate(check.item)
+                    manager.broadCast(exc)
+                    return -1
 
-    @staticmethod
-    def model():
-        return model.DeactivateItem
+            session = Session()
+
+            programs = []
+
+            for prg in prgconfig['programs']:
+
+                # process program
+
+                program = Program()
+                for key in prg.keys():
+                    if hasattr(program,key) and key != 'actions':
+                        try:
+                            setattr(program,key,prg[key])
+                        except:
+                            manager.broadCast('Could not set attribute %s = %s on Program' % (key,prg[key]))
+
+                # self.out("# program: %s" % program.name)
+
+                # process actions
+                for actconfig in prg['actions']:
+                    act = actionDict[actconfig['action']]()
+                    # self.out('Action: %s' % actconfig['action'])
+
+                    if actconfig['action'] == 'point':
+                        if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
+                            epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
+                            position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
+                            # self.out('Coords: %s' % position)
+                            act.targetRaDec = position
+                            # act = Point(targetRaDec=position)
+                        elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
+                            position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
+                            # self.out('Coords: %s' % position)
+                            act.targetAltAz = position
+                        else:
+                            # self.out('Target name: %s' % actconfig['name'])
+                            act.targetName = actconfig['name']
+
+                    else:
+                        for key in actconfig.keys():
+                            if hasattr(act,key) and key != 'action':
+                                # self.out('\t%s: %s' % (key,actconfig[key]))
+                                try:
+                                    setattr(act,key,actconfig[key])
+                                except:
+                                    manager.broadCast('Could not set attribute %s = %s on action %s' % (key,
+                                                                                               actconfig[key],
+                                                                                               actconfig['action']))
+                    program.actions.append(act)
+
+                # self.out("")
+                programs.append(program)
+
+            # self.out("List contain %i programs" % len(programs))
+            session.add_all(programs)
+            session.commit()
+
+            return 0
+            # self.out("Restart the scheduler to run it with the new database.")
+
+        if generateDatabase(check) < 0:
+            manager.broadCast("Could not configure scheduler with provided arguments.")
+            manager.setFlag("scheduler",
+                            IOFlag.ERROR)
+        else:
+            manager.broadCast("Scheduler configured. Restart it to run with the new database.")
+
