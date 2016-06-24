@@ -386,6 +386,7 @@ class DewHandler(CheckHandler):
                                         check.tempdiff) if not ret \
                 else "Dew point difference lower than specified threshold (%.2f/%.2f)"%(tempdiff,
                                         check.tempdiff)
+            check.time = site.ut().replace(tzinfo=None)
             return ret, msg
         elif check.mode == 1: # True if value is lower for more than the specified number of hours
             ret = check.tempdiff < tempdiff
@@ -407,6 +408,9 @@ class DewHandler(CheckHandler):
                 ret = False
 
             return ret, msg
+        else:
+            check.time = site.ut().replace(tzinfo=None)
+            return False, "Unrecognized mode %i." % check.mode
 
     @staticmethod
     def log(check):

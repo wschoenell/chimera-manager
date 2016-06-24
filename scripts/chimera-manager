@@ -340,6 +340,21 @@ checklist:
 
     ############################################################################
 
+    @action(help="Start manager", helpGroup="RUN", actionGroup="RUN")
+    def wakeup(self, options):
+
+        manager = self.supervisor
+        self.out('Starting manager... ',end='')
+
+        if manager.wakeup():
+            self.out(green('OK'))
+        else:
+            self.out(red("FAILED"))
+
+        return 0
+
+    ############################################################################
+
     @action(help="Stop manager", helpGroup="RUN", actionGroup="RUN")
     def stop(self, options):
 

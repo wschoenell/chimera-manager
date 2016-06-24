@@ -79,151 +79,119 @@ class StopAll(BaseResponse):
         # except:
         #     pass
 
-class UnparkTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = UnparkTelescope.telescope
-        manager = UnparkTelescope.manager
-
-        try:
-            telescope.unpark()
-        except Exception, e:
-            manager.broadCast(e)
-
-class ParkTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = ParkTelescope.telescope
-        manager = ParkTelescope.manager
-
-        try:
-            telescope.park()
-        except Exception, e:
-            manager.broadCast(e)
-
-class OpenTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = OpenTelescope.telescope
-        manager = OpenTelescope.manager
-
-        try:
-            telescope.openCover()
-        except Exception, e:
-            manager.broadCast(e)
-
-class CloseTelescope(BaseResponse):
-
-    @staticmethod
-    @requires("telescope")
-    def process(check):
-        telescope = OpenTelescope.telescope
-        manager = OpenTelescope.manager
-
-        try:
-            telescope.closeCover()
-        except Exception, e:
-            manager.broadCast(e)
-
-class OpenDomeSlit(BaseResponse):
+class DomeAction(BaseResponse):
+    '''
+    Perform Dome actions.
+    0 - Open dome slit
+    1 - Close dome slit
+    2 - Open dome flap
+    3 - Close dome flap
+    4 - Rotate dome to "parameter" angle
+    '''
 
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = OpenDomeSlit.dome
-        manager = OpenDomeSlit.manager
+        dome = DomeAction.dome
+        manager = DomeAction.manager
 
-        # Check if dome can be opened
-        if manager.canOpen():
+        if check.mode == 0:
+            # Open Dome Slit
+            # Check if dome can be opened
+            if manager.canOpen():
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.OPERATING)
+
+                    # I will only try to open the flap if I can set the flag to operating
+                    if not dome.isFlapOpen():
+                        dome.openFlap()
+
+                except StatusUpdateException, e:
+                    manager.broadCast(e)
+                except:
+                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        pass
+        elif check.mode == 1:
+            # Close dome Slit
             try:
                 manager.setFlag("dome",
-                                IOFlag.OPERATING)
-
-                # I will only try to open the slit if I can set the flag to operating
-                if not dome.isSlitOpen():
-                    manager.broadCast("Opening dome slit")
-                    dome.openSlit()
-
+                                IOFlag.READY)
             except StatusUpdateException, e:
                 manager.broadCast(e)
             except Exception, e:
-                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                # Should I also try to close the slit?
                 manager.broadCast(e)
-                try:
 
-                    manager.setFlag("dome",
-                                    IOFlag.ERROR)
-
-                except:
-                    pass
-
-class OpenDomeFlap(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        dome = OpenDomeFlap.dome
-        manager = OpenDomeFlap.manager
-
-        # Check if dome can be opened
-        if manager.canOpen():
-            try:
-                manager.setFlag("dome",
-                                IOFlag.OPERATING)
-
-                # I will only try to open the flap if I can set the flag to operating
-                if not dome.isFlapOpen():
-                    dome.openFlap()
-
-            except StatusUpdateException, e:
-                manager.broadCast(e)
-            except:
-                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+            # I will try to close the dome regardless of flag switching problems
+            if dome.isSlitOpen():
+                dome.closeSlit()
+        elif check.mode == 2:
+            # Open dome flap
+            # Check if dome can be opened
+            if manager.canOpen():
                 try:
                     manager.setFlag("dome",
-                                    IOFlag.ERROR)
+                                    IOFlag.OPERATING)
+
+                    # I will only try to open the flap if I can set the flag to operating
+                    if not dome.isFlapOpen():
+                        dome.openFlap()
+
+                except StatusUpdateException, e:
+                    manager.broadCast(e)
                 except:
-                    pass
+                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        pass
+        elif check.mode == 3:
+            # Close dome flap
+            # Dome may still be operating with Flap closed. Will close without any flag changes
+            if dome.isFlapOpen():
+                try:
+                    dome.closeFlap()
+                except Exception, e:
+                    manager.broadCast(e)
+        elif check.mode == 4:
+            # Move dome to "parameter" angle
+            from chimera.util.coord import Coord
+            target = Coord.fromDMS(check.parameter) # If this fail, action won't be completed
+            dome.stand()
+            manager.broadCast("Moving dome to %s ... " % target)
+            dome.slewToAz(target)
 
-class CloseDomeSlit(BaseResponse):
+class TelescopeAction(BaseResponse):
 
     @staticmethod
-    @requires("dome")
+    @requires("telescope")
     def process(check):
-        dome = CloseDomeSlit.dome
-        manager = CloseDomeSlit.manager
+        tel = TelescopeAction.telescope
+        manager = TelescopeAction.manager
 
-        try:
-            manager.setFlag("dome",
-                            IOFlag.READY)
-        except StatusUpdateException, e:
-            manager.broadCast(e)
-        except Exception, e:
-            manager.broadCast(e)
-
-        # I will try to close the dome regardless of flag switching problems
-        if dome.isSlitOpen():
-            dome.closeSlit()
-
-class CloseDomeFlap(BaseResponse):
-
-    @staticmethod
-    @requires("dome")
-    def process(check):
-        dome = CloseDomeFlap.dome
-        manager = CloseDomeFlap.manager
-
-        # Dome may still be operating with Flap closed. Will close without any flap changes
-        if dome.isFlapOpen():
+        if check.mode == 0:
             try:
-                dome.closeFlap()
+                tel.unpark()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 1:
+            try:
+                tel.park()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 2:
+            try:
+                tel.openCover()
+            except Exception, e:
+                manager.broadCast(e)
+        if check.mode == 3:
+            try:
+                tel.closeCover()
             except Exception, e:
                 manager.broadCast(e)
 
@@ -311,7 +279,7 @@ class SetInstrumentFlag(BaseResponse):
         manager = SetInstrumentFlag.manager
 
         manager.setFlag(check.instrument,
-                        check.flag)
+                        IOFlag[check.flag])
     @staticmethod
     def model():
         return model.SetInstrumentFlag
@@ -349,28 +317,128 @@ class Question(BaseResponse):
     def model():
         return model.Question
 
-class ActivateItem(BaseResponse):
-    @staticmethod
-    def process(check):
-        manager = BaseResponse.manager
-        manager = copy.copy(manager)
+class StartScheduler(BaseResponse):
 
-        manager.broadCast("Activating item %s " % check.item)
-        manager.activate(check.item)
+    @staticmethod
+    @requires("scheduler")
+    def process(check):
+        sched = StartScheduler.scheduler
+        manager = BaseResponse.manager
+
+        manager.setFlag("scheduler",
+                        IOFlag.OPERATING)
+
+        sched.start()
+
+
+class ConfigureScheduler(BaseResponse):
+    @staticmethod
+    @requires("scheduler")
+    def process(check):
+
+        import yaml
+        from chimera.util.position import Position
+        from chimera.controllers.scheduler.model import (Session, Program, AutoFocus, AutoFlat,
+                                                 PointVerify, Point,
+                                                 Expose)
+
+        actionDict = {'autofocus' : AutoFocus,
+                      'autoflat'  : AutoFlat,
+                      'pointverify' : PointVerify,
+                      'point' : Point,
+                      'expose' : Expose,
+              }
+
+        manager = BaseResponse.manager
+        sched = ConfigureScheduler.scheduler
+
+        # delete all programs
+        session = Session()
+        programs = session.query(Program).all()
+        for program in programs:
+            session.delete(program)
+        session.commit()
+
+        def generateDatabase(options):
+
+            with open(os.path.join(os.path.expanduser('~/'),
+                    options.filename), 'r') as stream:
+                try:
+                    prgconfig = yaml.load(stream)
+                except yaml.YAMLError as exc:
+
+                    manager.broadCast(exc)
+                    return -1
+
+            session = Session()
+
+            programs = []
+
+            for prg in prgconfig['programs']:
+
+                # process program
+
+                program = Program()
+                for key in prg.keys():
+                    if hasattr(program,key) and key != 'actions':
+                        try:
+                            setattr(program,key,prg[key])
+                        except:
+                            manager.broadCast('Could not set attribute %s = %s on Program' % (key,prg[key]))
+
+                # self.out("# program: %s" % program.name)
+
+                # process actions
+                for actconfig in prg['actions']:
+                    act = actionDict[actconfig['action']]()
+                    # self.out('Action: %s' % actconfig['action'])
+
+                    if actconfig['action'] == 'point':
+                        if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
+                            epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
+                            position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
+                            # self.out('Coords: %s' % position)
+                            act.targetRaDec = position
+                            # act = Point(targetRaDec=position)
+                        elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
+                            position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
+                            # self.out('Coords: %s' % position)
+                            act.targetAltAz = position
+                        else:
+                            # self.out('Target name: %s' % actconfig['name'])
+                            act.targetName = actconfig['name']
+
+                    else:
+                        for key in actconfig.keys():
+                            if hasattr(act,key) and key != 'action':
+                                # self.out('\t%s: %s' % (key,actconfig[key]))
+                                try:
+                                    setattr(act,key,actconfig[key])
+                                except:
+                                    manager.broadCast('Could not set attribute %s = %s on action %s' % (key,
+                                                                                               actconfig[key],
+                                                                                               actconfig['action']))
+                    program.actions.append(act)
+
+                # self.out("")
+                programs.append(program)
+
+            # self.out("List contain %i programs" % len(programs))
+            session.add_all(programs)
+            session.commit()
+
+            return 0
+            # self.out("Restart the scheduler to run it with the new database.")
+
+        if generateDatabase(check) < 0:
+            manager.broadCast("Could not configure scheduler with provided arguments.")
+            manager.setFlag("scheduler",
+                            IOFlag.ERROR)
+        else:
+            manager.setFlag("scheduler",
+                            IOFlag.READY)
+            manager.broadCast("Scheduler configured. Restart it to run with the new database.")
 
     @staticmethod
     def model():
-        return model.ActivateItem
-
-class DeactivateItem(BaseResponse):
-    @staticmethod
-    def process(check):
-        manager = BaseResponse.manager
-        manager = copy.copy(manager)
-
-        manager.broadCast("Deactivating item %s " % check.item)
-        manager.deactivate(check.item)
-
-    @staticmethod
-    def model():
-        return model.DeactivateItem
+        return model.ConfigureScheduler

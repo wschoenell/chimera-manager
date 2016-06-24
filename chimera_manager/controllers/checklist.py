@@ -2,7 +2,8 @@
 from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
                                                CheckTemperature, CheckWindSpeed,
                                                CheckDewPoint, CheckDew, AskListener,
-                                               CheckDome, CheckTransparency, CheckInstrumentFlag,
+                                               CheckTransparency, CheckInstrumentFlag,
+                                               CheckDome, CheckTelescope,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus, KeyList
@@ -11,7 +12,7 @@ from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler, TransparencyHandler,
                                                   WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
                                                   DewHandler, AskListenerHandler,
-                                                  DomeHandler)
+                                                  DomeHandler, TelescopeHandler)
 from chimera_manager.controllers import baseresponse
 from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
@@ -46,6 +47,7 @@ class CheckList(object):
                               CheckDew:         DewHandler,
                               AskListener:      AskListenerHandler,
                               CheckDome: DomeHandler,
+                              CheckTelescope: TelescopeHandler,
                               CheckTransparency: TransparencyHandler,
                               CheckInstrumentFlag: InstrumentFlagHandler,
                               }
@@ -101,21 +103,25 @@ class CheckList(object):
 
         self.mustStop.clear()
 
+        self.log.debug('Checking if item is active...')
         if not item.active:
+            self.log.debug('Item is inactive. skipping...')
             item.lastUpdate = self.controller.site().ut().replace(tzinfo=None)
-            item.status = FlagStatus.UNKNOWN.index
+            item.status = int(FlagStatus.UNKNOWN.index)
             return
+
+        self.log.debug('Running check list...')
 
         status = False
         run_status = False
         msg = ''
         for check in item.check:
-
+            self.log.debug('Here...')
             # aborted?
             if self.mustStop.isSet():
                 raise CheckAborted()
             # Should be included in check?
-
+            self.log.debug('Here...')
             try:
                 self.currentCheck = check
                 try:
@@ -123,7 +129,7 @@ class CheckList(object):
                 except KeyError:
                     self.log.error("No handler to %s item. Skipping it" % check)
                     continue
-
+                self.log.debug('Here...')
                 logMsg = str(self.currentHandler.log(check))
                 self.log.debug("[start] %s " % logMsg)
                 self.controller.checkBegin(check, logMsg)

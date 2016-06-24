@@ -331,7 +331,7 @@ class SetInstrumentFlag(Response):
     instrument = Column(String)
     flag = Column(Integer)
 
-    def __init__(self,instrument='',flag=''):
+    def __init__(self,instrument='',flag=-1):
         self.response_id = self.__tablename__.upper()
         self.instrument = instrument
         self.flag = int(flag)
@@ -391,32 +391,38 @@ class DomeFan(Response):
     def __str__(self):
         return "[DomeFan]: %s" % (self.fan)
 
-class ActivateItem(Response):
-    __tablename__ = "activateitem"
-    __mapper_args__ = {'polymorphic_identity': 'ActivateItem'}
+class DomeAction(Response):
+    __tablename__ = "domeaction"
+    __mapper_args__ = {'polymorphic_identity': 'DomeAction'}
 
-    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
-    item = Column(String)
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    dome = Column(String)
+    mode = Column(Integer)
+    parameter = Column(String)
 
-    def __init__(self,item=''):
+    def __init__(self,dome='/Dome/0',mode=0,parameter=''):
         self.response_id = self.__tablename__.upper()
-        self.item = item.upper()
+        self.dome = dome
+        self.mode = mode
+        self.parameter = parameter
 
     def __str__(self):
-        return "Activate: %s"%(self.item)
+        return "[DomeAction]: %i %s" % (self.mode,
+                                        self.parameter)
 
-class DeactivateItem(Response):
-    __tablename__ = "deactivateitem"
-    __mapper_args__ = {'polymorphic_identity': 'DeactivateItem'}
 
-    id     = Column(Integer, ForeignKey('response.id'), primary_key=True)
-    item = Column(String)
+class ConfigureScheduler(Response):
+    __tablename__ = "configurescheduler"
+    __mapper_args__ = {'polymorphic_identity': 'ConfigureScheduler'}
 
-    def __init__(self,item=''):
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    filename = Column(String)
+
+    def __init__(self,filename=''):
         self.response_id = self.__tablename__.upper()
-        self.item = item.upper()
+        self.filename = filename
 
     def __str__(self):
-        return "Deactivate: %s"%(self.item)
+        return "[ConfigureScheduler]: %s" % self.filename
 
 metaData.create_all(engine)

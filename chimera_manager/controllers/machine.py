@@ -114,6 +114,7 @@ class Machine(threading.Thread):
                 try:
                     self.log.debug("[start] Checking %s"%item)
                     self.checklist.check(item)
+                    session.commit()
                 except CheckAborted:
                     self.state(State.OFF)
                     self.log.debug("[aborted by user] %s" % str(item))
