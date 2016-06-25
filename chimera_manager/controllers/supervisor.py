@@ -156,6 +156,9 @@ class Supervisor(ChimeraObject):
         else:
             return False
 
+    def runAction(self, name):
+        return self.machine.runAction(name)
+
     def connectTelegram(self):
 
         if self["telegram-token"] is not None:

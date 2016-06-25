@@ -105,6 +105,12 @@ checklist:
                                 default=None,
                                 help="Key to unlock an instrument.",
                                 metavar="KEY"),
+                           dict(name="action",
+                                long="action-name",
+                                helpGroup="RUN",
+                                default=None,
+                                help="Action name.",
+                                metavar="ACTION"),
                            )
     ############################################################################
 
@@ -158,6 +164,9 @@ checklist:
 
             item = List(name=check['name'],
                         eager = check['eager'])
+
+            if "active" in check.keys():
+                item.active = check["active"]
 
             self.out("# item: %s" % item.name)
 
@@ -362,6 +371,21 @@ checklist:
 
         self.out('Stopping manager... ',end='')
         if manager.stop():
+            self.out(green('OK'))
+        else:
+            self.out(red('FAILED'))
+
+        return 0
+
+    ############################################################################
+
+    @action(long="run-action",help="Run an action without checking.", helpGroup="RUN", actionGroup="RUN")
+    def run_action(self, options):
+
+        manager = self.supervisor
+
+        self.out("Running action %s..." % options.action, end='')
+        if manager.runAction(options.action):
             self.out(green('OK'))
         else:
             self.out(red('FAILED'))

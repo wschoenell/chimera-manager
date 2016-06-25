@@ -93,6 +93,24 @@ class Machine(threading.Thread):
         self.__wakeUpCall.notifyAll()
         self.__wakeUpCall.release()
 
+    def runAction(self, name):
+
+        session = Session()
+
+        item = session.query(List).filter(List.name == name)
+
+        if item.count() == 0:
+            return False
+
+        item = item[0]
+
+        try:
+            self.checklist.runActions(item)
+        except:
+            return False
+        else:
+            return True
+
     def _process(self):
 
         def process ():

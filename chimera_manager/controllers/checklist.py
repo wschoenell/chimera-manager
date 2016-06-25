@@ -197,6 +197,26 @@ class CheckList(object):
 
         self.log.debug("[finish] took: %f s" % (time.time() - t0))
 
+    def runActions(self, item):
+        '''
+        This funcion will run the responses of a given item without running the checklist.
+        :param item:
+        :return:
+        '''
+
+        for response in item.response:
+            try:
+                self.log.debug('%s' % response.response_id)
+                currentResponse = self.responseList[response.response_id]
+                currentResponse.process(response)
+            except KeyError:
+                self.log.error("No handler to response %s. Skipping it" % response.response_id)
+                return
+            except Exception, e:
+                self.log.exception(e)
+                return
+
+
     def updateInstrumentStatus(self,instrument,status,key=None):
         session = ioSession()
         iostatus = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == instrument)[0]
