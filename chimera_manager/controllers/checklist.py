@@ -4,6 +4,7 @@ from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHu
                                                CheckDewPoint, CheckDew, AskListener,
                                                CheckTransparency, CheckInstrumentFlag,
                                                CheckDome, CheckTelescope, CheckWeatherStation,
+                                               CheckTransparency, CheckInstrumentFlag,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus, KeyList
@@ -47,7 +48,6 @@ class CheckList(object):
                               CheckDew:         DewHandler,
                               AskListener:      AskListenerHandler,
                               CheckDome: DomeHandler,
-                              CheckTelescope: TelescopeHandler,
                               CheckTransparency: TransparencyHandler,
                               CheckInstrumentFlag: InstrumentFlagHandler,
                               CheckWeatherStation: CheckWeatherStationHandler,
@@ -117,12 +117,12 @@ class CheckList(object):
         run_status = False
         msg = ''
         for check in item.check:
-            self.log.debug('Here...')
+
             # aborted?
             if self.mustStop.isSet():
                 raise CheckAborted()
             # Should be included in check?
-            self.log.debug('Here...')
+
             try:
                 self.currentCheck = check
                 try:
@@ -130,7 +130,7 @@ class CheckList(object):
                 except KeyError:
                     self.log.error("No handler to %s item. Skipping it" % check)
                     continue
-                self.log.debug('Here...')
+
                 logMsg = str(self.currentHandler.log(check))
                 self.log.debug("[start] %s " % logMsg)
                 self.controller.checkBegin(check, logMsg)

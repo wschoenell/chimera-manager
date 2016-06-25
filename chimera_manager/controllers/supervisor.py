@@ -247,6 +247,9 @@ class Supervisor(ChimeraObject):
     def getSched(self,index=0):
         return self.getManager().getProxy(self._instrument_list["scheduler"][index])
 
+    def getSched(self):
+        return self.getManager().getProxy(self["scheduler"])
+
     def getItems(self):
         return self.checklist.itemsList
 

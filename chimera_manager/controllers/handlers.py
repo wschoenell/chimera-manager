@@ -408,6 +408,9 @@ class DewHandler(CheckHandler):
                 ret = False
 
             return ret, msg
+        else:
+            check.time = site.ut().replace(tzinfo=None)
+            return False, "Unrecognized mode %i." % check.mode
 
     @staticmethod
     def log(check):
