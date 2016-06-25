@@ -20,6 +20,7 @@ import telnetlib
 import telegram
 import logging
 import time
+from collections import OrderedDict
 
 class Supervisor(ChimeraObject):
 
@@ -40,15 +41,21 @@ class Supervisor(ChimeraObject):
     def __init__(self):
         ChimeraObject.__init__(self)
 
-        self._operationStatus = {
-                                 "site":            InstrumentOperationFlag.UNSET,
-                                 "telescope":       InstrumentOperationFlag.UNSET,
-                                 "camera":          InstrumentOperationFlag.UNSET,
-                                 "dome":            InstrumentOperationFlag.UNSET,
-                                 "scheduler":       InstrumentOperationFlag.UNSET,
-                                 "domefan":         InstrumentOperationFlag.UNSET,
-                                 "weatherstation":  InstrumentOperationFlag.UNSET,
-                                 }
+
+        self._base_instrument_list = ["site", "telescope", "camera", "dome", "scheduler", "domefan", "weatherstations"]
+        self._instrument_list = {}
+
+        self._operationStatus = OrderedDict()
+
+        # self._operationStatus = {
+        #                          "site":            [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "telescope":       [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "camera":          [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "dome":            [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "scheduler":       [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "domefan":         [ InstrumentOperationFlag.UNSET, ] ,
+        #                          "weatherstation":  [ InstrumentOperationFlag.UNSET, ] ,
+        #                          }
 
         self._telegramBroadcast = False
         self._telegramSocket = None
@@ -67,6 +74,18 @@ class Supervisor(ChimeraObject):
 
         # Connect to telegram, if info is given
         self.connectTelegram()
+
+        # Configure instrument list
+        for instrument in self._base_instrument_list:
+            if self[instrument] is not None:
+                self.log.debug('%s: %s -> %s' % (instrument,self[instrument],self[instrument].split(',')))
+                self._instrument_list[instrument] = self[instrument].split(",")
+
+                if len(self._instrument_list[instrument]) == 1:
+                    self._operationStatus[instrument] = InstrumentOperationFlag.UNSET
+                else:
+                    for i, ainstrument in enumerate(self._instrument_list[instrument]):
+                        self._operationStatus[instrument+'_%02i' % (i+1)] = InstrumentOperationFlag.UNSET
 
         self.checklist = CheckList(self)
         self.machine = Machine(self.checklist, self)
@@ -88,7 +107,6 @@ class Supervisor(ChimeraObject):
         self._listen_ids = None if self["telegram-listen-ids"] is None \
             else [int(id) for id in str(self["telegram-listen-ids"]).split(',')]
 
-        self["weatherstations"] = self["weatherstations"].split(",")
 
     def __stop__(self):
 
@@ -217,11 +235,14 @@ class Supervisor(ChimeraObject):
     def site(self):
         return self.getManager().getProxy('/Site/0')
 
-    def getTel(self):
-        return self.getManager().getProxy(self["telescope"])
+    def getInstrumentLocationList(self, instrument):
+        return self._instrument_list[instrument]
 
-    def getSched(self):
-        return self.getManager().getProxy(self["scheduler"])
+    def getTel(self,index=0):
+        return self.getManager().getProxy(self._instrument_list["telescope"][index])
+
+    def getSched(self,index=0):
+        return self.getManager().getProxy(self._instrument_list["scheduler"][index])
 
     def getItems(self):
         return self.checklist.itemsList

@@ -3,7 +3,7 @@ from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHu
                                                CheckTemperature, CheckWindSpeed,
                                                CheckDewPoint, CheckDew, AskListener,
                                                CheckTransparency, CheckInstrumentFlag,
-                                               CheckDome, CheckTelescope,
+                                               CheckDome, CheckTelescope, CheckWeatherStation,
                                                Response)
 from chimera_manager.controllers.iostatus_model import Session as ioSession
 from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus, KeyList
@@ -12,7 +12,7 @@ from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
                                                   HumidityHandler, TemperatureHandler, TransparencyHandler,
                                                   WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
                                                   DewHandler, AskListenerHandler,
-                                                  DomeHandler, TelescopeHandler)
+                                                  DomeHandler, TelescopeHandler, CheckWeatherStationHandler)
 from chimera_manager.controllers import baseresponse
 from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
@@ -50,6 +50,7 @@ class CheckList(object):
                               CheckTelescope: TelescopeHandler,
                               CheckTransparency: TransparencyHandler,
                               CheckInstrumentFlag: InstrumentFlagHandler,
+                              CheckWeatherStation: CheckWeatherStationHandler,
                               }
         self.itemsList = {}
         self.responseList = {}
@@ -306,21 +307,19 @@ class CheckList(object):
 
         for instrument in handler.process.__requires__:
             try:
-                if instrument == "weatherstations":
-                    ws_list = []
-                    for i, ws in enumerate(self.controller[instrument]):
-                        try:
-                            ws_manager = self.controller.getManager().getProxy(ws)
-                            ws_list.append(ws_manager)
-                        except Exception, e:
-                            self.log.error('Could not inject weather station %s on %s handler' % (ws,
-                                                                                                  handler))
-                            self.log.exception(e)
-                    if len(ws_list) > 0:
-                        setattr(handler, instrument, ws_list)
-                else:
-                    setattr(handler, instrument,
-                            self.controller.getManager().getProxy(self.controller[instrument]))
+                instrument_location_list = self.controller.getInstrumentLocationList(instrument)
+                instrument_proxy_list = []
+                for i, inst in enumerate(instrument_location_list):
+                    try:
+                        inst_manager = self.controller.getManager().getProxy(inst)
+                        instrument_proxy_list.append(inst_manager)
+                    except Exception, e:
+                        self.log.error('Could not inject %s %s on %s handler' % (instrument,
+                                                                                 inst,
+                                                                                 handler))
+                        self.log.exception(e)
+                if len(instrument_proxy_list) > 0:
+                    setattr(handler,instrument,instrument_proxy_list)
             except ObjectNotFoundException, e:
                 self.log.error("No instrument to inject on %s handler" % handler)
             except InvalidLocationException, e:

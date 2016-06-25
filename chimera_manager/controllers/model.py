@@ -75,6 +75,21 @@ class CheckTelescope(Check):
     def __str__(self):
         return "CheckTelescope: mode %i" % self.mode
 
+class CheckWeatherStation(Check):
+    __tablename__ = "checkweatherstation"
+    __mapper_args__ = {'polymorphic_identity': 'CheckWeatherStation'}
+    id = Column(Integer, ForeignKey('check.id'), primary_key=True)
+
+    mode  = Column(Integer,default=0)   # Operation mode
+    index = Column(Integer,default=0)   # Choose a weather station
+
+    def __init__(self, mode=0,index=0):
+        self.mode = int(mode)
+        self.index = int(index)
+
+    def __str__(self):
+        return "CheckWeatherStation: mode(%i) ws(%i)" % (self.mode, self.index)
+
 class CheckTime(Check):
     __tablename__ = "checktime"
     __mapper_args__ = {'polymorphic_identity': 'CheckTime'}

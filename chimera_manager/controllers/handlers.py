@@ -408,9 +408,6 @@ class DewHandler(CheckHandler):
                 ret = False
 
             return ret, msg
-        else:
-            check.time = site.ut().replace(tzinfo=None)
-            return False, "Unrecognized mode %i." % check.mode
 
     @staticmethod
     def log(check):
@@ -494,6 +491,34 @@ class TelescopeHandler(CheckHandler):
     @staticmethod
     def log(check):
         return "%s"%(check)
+
+class CheckWeatherStationHandler(CheckHandler):
+
+    @staticmethod
+    @requires("weatherstations")
+    def process(check):
+        manager = CheckWeatherStationHandler.manager
+        weatherstations = CheckWeatherStationHandler.weatherstations
+
+        ws = weatherstations[check.index]
+
+        t = ws.temperature()
+        if check.mode == 0:
+            # Check if WS is ok
+            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                return True, "Weather station data OK!"
+            else:
+                return False, "No valid weather station data available!"
+        elif check.mode == 1:
+            # Check if WS is not OK
+            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                return False, "Weather station data OK!"
+            else:
+                return True, "No valid weather station data available!"
+
+    @staticmethod
+    def log(check):
+        return "%s" % check
 
 class InstrumentFlagHandler(CheckHandler):
 
