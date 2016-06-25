@@ -104,8 +104,8 @@ class DomeAction(BaseResponse):
                                     IOFlag.OPERATING)
 
                     # I will only try to open the flap if I can set the flag to operating
-                    if not dome.isFlapOpen():
-                        dome.openFlap()
+                    if not dome.isSlitOpen():
+                        dome.openSlit()
 
                 except StatusUpdateException, e:
                     manager.broadCast(e)
@@ -166,6 +166,10 @@ class DomeAction(BaseResponse):
             manager.broadCast("Moving dome to %s ... " % target)
             dome.slewToAz(target)
 
+    @staticmethod
+    def model():
+        return model.DomeAction
+
 class TelescopeAction(BaseResponse):
 
     @staticmethod
@@ -194,6 +198,9 @@ class TelescopeAction(BaseResponse):
                 tel.closeCover()
             except Exception, e:
                 manager.broadCast(e)
+    @staticmethod
+    def model():
+        return model.TelescopeAction
 
 class DomeFan(BaseResponse):
 

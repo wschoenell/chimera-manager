@@ -410,6 +410,25 @@ class DomeAction(Response):
         return "[DomeAction]: %i %s" % (self.mode,
                                         self.parameter)
 
+class TelescopeAction(Response):
+    __tablename__ = "telescopeaction"
+    __mapper_args__ = {'polymorphic_identity': 'TelescopeAction'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    telescope = Column(String)
+    mode = Column(Integer)
+    parameter = Column(String)
+
+    def __init__(self,telescope='/Telescope/0',mode=0,parameter=''):
+        self.response_id = self.__tablename__.upper()
+        self.telescope = telescope
+        self.mode = mode
+        self.parameter = parameter
+
+    def __str__(self):
+        return "[TelescopeAction]: %i %s" % (self.mode,
+                                        self.parameter)
+
 
 class ConfigureScheduler(Response):
     __tablename__ = "configurescheduler"
