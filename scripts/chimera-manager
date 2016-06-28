@@ -143,6 +143,37 @@ checklist:
 
     ############################################################################
 
+    @action(long="update", help="Update programs on database from a text file",
+            helpGroup="DB", actionGroup="DB")
+    def updateDatabase(self, options):
+        self.generateDatabase(options)
+
+        # save a copy
+        if os.path.exists(DEFAULT_PROGRAM_DATABASE):
+            shutil.copy(DEFAULT_PROGRAM_DATABASE, "%s.%s.bak" %
+                        (DEFAULT_PROGRAM_DATABASE, time.strftime("%Y%m%d%H%M%S")))
+
+        # read yaml file
+        with open(options.filename, 'r') as stream:
+            try:
+                checkconfig = yaml.load(stream)
+            except yaml.YAMLError as exc:
+                self.exit(exc)
+
+        session = Session()
+
+        for check in checkconfig['checklist']:
+
+            items = session.query(List).filter(List.name == check['name'])
+            for item in items:
+                self.out("Deleting %s" % item)
+                session.delete(item)
+
+        session.commit()
+        self.generateDatabase(options)
+
+    ############################################################################
+
     def generateDatabase(self, options):
 
         with open(options.filename, 'r') as stream:

@@ -41,17 +41,17 @@ class StopAll(BaseResponse):
             pass
 
         try:
-            scheduler = StopAll.scheduler
-            scheduler.stop()
+            for scheduler in StopAll.scheduler:
+                scheduler.stop()
         except Exception, e:
             manager.broadCast(e)
             pass
 
         try:
-            telescope = StopAll.telescope
-            # manager.broadCast("Stopping Telescope")
-            if telescope.isTracking():
-                telescope.stopTracking()
+            for telescope in StopAll.telescope:
+                # manager.broadCast("Stopping Telescope")
+                if telescope.isTracking():
+                    telescope.stopTracking()
         except NotImplementedError, e:
             pass
         except Exception, e:
@@ -92,79 +92,84 @@ class DomeAction(BaseResponse):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = DomeAction.dome
+
         manager = DomeAction.manager
+        # dome = DomeAction.dome[0]
 
-        if check.mode == 0:
-            # Open Dome Slit
-            # Check if dome can be opened
-            if manager.canOpen():
-                try:
-                    manager.setFlag("dome",
-                                    IOFlag.OPERATING)
-
-                    # I will only try to open the flap if I can set the flag to operating
-                    if not dome.isSlitOpen():
-                        dome.openSlit()
-
-                except StatusUpdateException, e:
-                    manager.broadCast(e)
-                except:
-                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+        for dome in DomeAction.dome:
+            if check.mode == 0:
+                # Open Dome Slit
+                # Check if dome can be opened
+                if manager.canOpen():
                     try:
                         manager.setFlag("dome",
-                                        IOFlag.ERROR)
-                    except:
-                        pass
-        elif check.mode == 1:
-            # Close dome Slit
-            try:
-                manager.setFlag("dome",
-                                IOFlag.READY)
-            except StatusUpdateException, e:
-                manager.broadCast(e)
-            except Exception, e:
-                manager.broadCast(e)
+                                        IOFlag.OPERATING)
 
-            # I will try to close the dome regardless of flag switching problems
-            if dome.isSlitOpen():
-                dome.closeSlit()
-        elif check.mode == 2:
-            # Open dome flap
-            # Check if dome can be opened
-            if manager.canOpen():
+                        # I will only try to open the slit if I can set the flag to operating
+                        if not dome.isSlitOpen():
+                            dome.openSlit()
+
+
+                    except StatusUpdateException, e:
+                        manager.broadCast(e)
+                    except:
+                        # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                        try:
+                            manager.setFlag("dome",
+                                            IOFlag.ERROR)
+                        except:
+                            pass
+                else:
+                    manager.broadCast("Cannot open dome slit due to manager constraints.")
+            elif check.mode == 1:
+                # Close dome Slit
                 try:
                     manager.setFlag("dome",
-                                    IOFlag.OPERATING)
-
-                    # I will only try to open the flap if I can set the flag to operating
-                    if not dome.isFlapOpen():
-                        dome.openFlap()
-
+                                    IOFlag.READY)
                 except StatusUpdateException, e:
                     manager.broadCast(e)
-                except:
-                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                    try:
-                        manager.setFlag("dome",
-                                        IOFlag.ERROR)
-                    except:
-                        pass
-        elif check.mode == 3:
-            # Close dome flap
-            # Dome may still be operating with Flap closed. Will close without any flag changes
-            if dome.isFlapOpen():
-                try:
-                    dome.closeFlap()
                 except Exception, e:
                     manager.broadCast(e)
-        elif check.mode == 4:
-            # Move dome to "parameter" angle
-            from chimera.util.coord import Coord
-            target = Coord.fromDMS(check.parameter) # If this fail, action won't be completed
-            dome.stand()
-            manager.broadCast("Moving dome to %s ... " % target)
-            dome.slewToAz(target)
+
+                # I will try to close the dome regardless of flag switching problems
+                if dome.isSlitOpen():
+                    dome.closeSlit()
+            elif check.mode == 2:
+                # Open dome flap
+                # Check if dome can be opened
+                if manager.canOpen():
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.OPERATING)
+
+                        # I will only try to open the flap if I can set the flag to operating
+                        if not dome.isFlapOpen():
+                            dome.openFlap()
+
+                    except StatusUpdateException, e:
+                        manager.broadCast(e)
+                    except:
+                        # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
+                        try:
+                            manager.setFlag("dome",
+                                            IOFlag.ERROR)
+                        except:
+                            pass
+            elif check.mode == 3:
+                # Close dome flap
+                # Dome may still be operating with Flap closed. Will close without any flag changes
+                if dome.isFlapOpen():
+                    try:
+                        dome.closeFlap()
+                    except Exception, e:
+                        manager.broadCast(e)
+            elif check.mode == 4:
+                # Move dome to "parameter" angle
+                from chimera.util.coord import Coord
+                target = Coord.fromDMS(str(check.parameter)) # If this fail, action won't be completed
+                dome.stand()
+                manager.broadCast("Moving dome to %s ... " % target)
+                dome.slewToAz(target)
 
     @staticmethod
     def model():
@@ -175,29 +180,36 @@ class TelescopeAction(BaseResponse):
     @staticmethod
     @requires("telescope")
     def process(check):
-        tel = TelescopeAction.telescope
+        # tel = TelescopeAction.telescope[0]
         manager = TelescopeAction.manager
 
-        if check.mode == 0:
-            try:
-                tel.unpark()
-            except Exception, e:
-                manager.broadCast(e)
-        if check.mode == 1:
-            try:
-                tel.park()
-            except Exception, e:
-                manager.broadCast(e)
-        if check.mode == 2:
-            try:
-                tel.openCover()
-            except Exception, e:
-                manager.broadCast(e)
-        if check.mode == 3:
-            try:
-                tel.closeCover()
-            except Exception, e:
-                manager.broadCast(e)
+        for tel in TelescopeAction.telescope:
+            if check.mode == 0:
+                try:
+                    tel.unpark()
+                except Exception, e:
+                    manager.broadCast(e)
+            elif check.mode == 1:
+                try:
+                    tel.park()
+                except Exception, e:
+                    manager.broadCast(e)
+            elif check.mode == 2:
+                if manager.canOpen():
+                    try:
+                        manager.broadCast("Opening Telescope cover.")
+                        tel.openCover()
+                    except Exception, e:
+                        manager.broadCast(e)
+                else:
+                    manager.broadCast("Cannot open telescope cover due to manager constraints.")
+            elif check.mode == 3:
+                try:
+                    tel.closeCover()
+                except Exception, e:
+                    manager.broadCast(e)
+            else:
+                manager.broadCast("Not implemented mode %i for telescope" % (check.mode))
     @staticmethod
     def model():
         return model.TelescopeAction
@@ -329,13 +341,14 @@ class StartScheduler(BaseResponse):
     @staticmethod
     @requires("scheduler")
     def process(check):
-        sched = StartScheduler.scheduler
-        manager = BaseResponse.manager
+        # sched = StartScheduler.scheduler
+        manager = StartScheduler.manager
 
         manager.setFlag("scheduler",
                         IOFlag.OPERATING)
 
-        sched.start()
+        for sched in StartScheduler.scheduler:
+            sched.start()
 
 
 class ConfigureScheduler(BaseResponse):
@@ -357,7 +370,7 @@ class ConfigureScheduler(BaseResponse):
               }
 
         manager = BaseResponse.manager
-        sched = ConfigureScheduler.scheduler
+        # sched = ConfigureScheduler.scheduler
 
         # delete all programs
         session = Session()
