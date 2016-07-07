@@ -43,10 +43,12 @@ class List(Base):
                          cascade="all, delete, delete-orphan")
 
     def __str__ (self):
-        return "Item[%s]:%s/%s Status[%i] LasUpdate: %s"%(self.name,'Eager' if self.eager else 'Normal',
+        return "Item[%s.%s]:%s/%s Status[%i] LasUpdate: %s"%(self.name,
+                                                             'Active' if self.active else 'Inactive',
+                                                             'Eager' if self.eager else 'Normal',
                                                           'EagerResponse' if self.eager_response else 'CascatedResponse',
                                                           self.status,
-                                                       self.lastUpdate)
+                                                          self.lastUpdate)
 
 class Check(Base):
 
