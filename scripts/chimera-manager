@@ -198,6 +198,8 @@ checklist:
 
             if "active" in check.keys():
                 item.active = check["active"]
+            if "eager_response" in check.keys():
+                item.active = check["eager_response"]
 
             self.out("# item: %s" % item.name)
 
