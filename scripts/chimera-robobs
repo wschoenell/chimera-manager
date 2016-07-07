@@ -1,0 +1,957 @@
+#!/usr/bin/env python
+
+################################################################################
+
+__author__ = 'Ribeiro, T.'
+
+################################################################################
+
+import sys
+import os
+import time
+import datetime as dt
+import shutil
+import re
+import yaml
+import numpy as np
+import ConfigParser
+from astropy.table import Table
+from sqlalchemy import (or_,and_, desc, asc)
+
+from chimera.core.cli import ChimeraCLI, action, ParameterType
+from chimera.core.site import datetimeFromJD
+from chimera.core.callback import callback
+from chimera.core.exceptions import printException, ObjectNotFoundException
+from chimera.util.output import blue, green, red
+from chimera.util.position import Position
+
+
+from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE, DEFAULT_ROBOBS_DATABASE
+from chimera_manager.controllers.model import Session
+from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
+from chimera_manager.controllers.status import InstrumentOperationFlag
+from chimera_manager.controllers.scheduler.model import Session as RSession
+from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, ObsBlock,
+                                                         BlockConfig, Targets, ObservingLog,
+                                                         Program)
+from chimera_manager.controllers.scheduler import algorithms
+################################################################################
+
+class RobObs(ChimeraCLI):
+    ############################################################################
+
+    def __init__(self):
+        ChimeraCLI.__init__(self, "chimera-robobs",
+                            "RobObs controller", 0.0, port=9010)
+
+        '''
+        Check manager status and control some actions.
+        '''
+
+        self.addHelpGroup("ROBOBS", "RobObs")
+        self.addController(name="robobs",
+                           cls="RobObs",
+                           required=True,
+                           help="Robobs controller to be used",
+                           helpGroup="ROBOBS")
+
+        self.addHelpGroup("RUN", "Start/Stop/Monitor")
+        self.addParameters(dict(name="filename", long="file", short="f",
+                                default="",
+                                help="Filename with program or block information.",
+                                metavar="FILENAME",
+                                helpGroup="RUN"))
+
+        self.addHelpGroup("SCHEDULER", "Scheduler")
+        self.addParameters(dict(name="PID", long="pid", type='string',
+                                help="Project ID flag. Use to select targets from DB.",
+                                metavar="PID",
+                                helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="JDstart", long="jdstart", type=float,
+                                help="Julian date of the start of the observations to be scheduled. Override date.",
+                                metavar="JDstart",
+                                helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="JDend", long="jdend", type=float,
+                                help="Julian date at the end of the observations to be scheduled. Override date.",
+                                metavar="JDend",
+                                helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="dstart", long="dateStart", type='string',
+                                help="Date (yyyy/mm/dd-hh:mm:ss) of the start of the observations to be scheduled.",
+                                metavar="dstart",
+                                helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="dend", long="dateEnd", type='string',
+                                help="Date (yyyy/mm/dd-hh:mm:ss.s) of the end of the observations to be scheduled.",
+                                metavar="dend",
+                                helpGroup="SCHEDULER"))
+
+    ############################################################################
+
+    @action(long="addProject",
+            help="Add project (and related information) to the database.",
+            helpGroup="PJ", actionGroup="Project")
+    def addProject(self, options):
+
+        '''
+            Input configuration file for project database. If project exists
+            update information, create new project otherwise.
+        '''
+
+        config = ConfigParser.RawConfigParser() # Todo: Replace by yaml
+
+        self.out('-Reading project information from %s ...' % options.filename)
+
+        config.read(options.filename)
+
+        session = RSession()
+
+        if config.has_section('projects'):
+            pid = config.get('projects', 'pid')
+            pi = config.get('projects', 'pi')
+            abstract = config.get('projects', 'abstract')
+            url = config.get('projects', 'url')
+            priority = config.get('projects', 'priority')
+
+            project = session.query(Projects).filter(Projects.pid == pid)
+            if len(project[:]) > 0:
+                self.out('-Project %s already in database. Updating...' % pid)
+                project[0].pi = pi
+                project[0].abstract = abstract
+                project[0].url = url
+                project[0].priority = priority
+            else:
+                self.out('-Adding %s to the database ...' % pid)
+                project = Projects(pid=pid,
+                                   pi=pi,
+                                   abstract=abstract,
+                                   url=url,
+                                   priority=priority)
+
+                session.add(project)
+
+        self.out('-Reading observing block information...')
+
+        sct = np.array(config.sections())
+
+        bp_sct = sct[np.array([ss.find('blockpar') for ss in sct]) == 0]
+
+        if bp_sct > 0:
+            self.out('--Found %i blocks.' % len(bp_sct))
+
+            for ss in bp_sct:
+
+                b_id = config.get(ss, 'id')
+                b_pid = config.get(ss, 'pid')
+                maxairmass = config.get(ss, 'maxairmass')
+                minairmass = config.get(ss, 'minairmass')
+                maxmoonBright = config.get(ss, 'maxmoonBright')
+                minmoonBright = config.get(ss, 'minmoonBright')
+                minmoonDist = config.get(ss, 'minmoonDist')
+                maxseeing = config.get(ss, 'maxseeing')
+                cloudcover = config.get(ss, 'cloudcover')
+                schedalgorith = config.get(ss, 'schedalgorith')
+                applyextcorr = config.get(ss, 'applyextcorr')
+
+                block = session.query(BlockPar).filter(BlockPar.bid == b_id).filter(BlockPar.pid == b_pid)
+                if len(block[:]) > 0:
+                    self.out('---Block %s.%s already in database. Updating...' % (b_pid, b_id))
+                    block[0].bid = b_id
+                    block[0].pid = b_pid
+                    block[0].maxairmass = maxairmass
+                    block[0].minairmass = minairmass
+                    block[0].maxmoonBright = maxmoonBright
+                    block[0].minmoonBright = minmoonBright
+                    block[0].minmoonDist = minmoonDist
+                    block[0].maxseeing = maxseeing
+                    block[0].cloudcover = cloudcover
+                    block[0].schedalgorith = schedalgorith
+                    block[0].applyextcorr = applyextcorr
+                else:
+                    self.out('---Adding block %s.%s to the database...' % (b_pid, b_id))
+                    block = BlockPar(bid=b_id,
+                                     pid=b_pid,
+                                     maxairmass=maxairmass,
+                                     minairmass=minairmass,
+                                     maxmoonBright=maxmoonBright,
+                                     minmoonBright=minmoonBright,
+                                     minmoonDist=minmoonDist,
+                                     maxseeing=maxseeing,
+                                     cloudcover=cloudcover,
+                                     schedalgorith=schedalgorith,
+                                     applyextcorr=applyextcorr)
+                    session.add(block)
+            session.commit()
+        else:
+            self.out('--No block definition found.')
+
+        self.out('-Done')
+
+    ############################################################################
+
+    @action(long="deleteProject",
+            help="Delete project (and related information) from the database.",
+            helpGroup="PJ", actionGroup="Project")
+    def deleteProject(self, opt):
+
+        if not opt.pid:
+            self.err(red('*') + 'Specify project to delete with \'--pid\' ...')
+            return -1
+
+        # save a copy
+        if os.path.exists(DEFAULT_ROBOBS_DATABASE):
+            shutil.copy(DEFAULT_ROBOBS_DATABASE,
+                        "%s.%s.bak" % (DEFAULT_ROBOBS_DATABASE,
+                                       time.strftime("%Y%m%d%H%M%S")))
+
+        # delete all projects and related information
+        session = RSession()
+
+        self.out('-Deleting all references of project %s from database.' % opt.pid)
+
+        obsblock = session.query(ObsBlock).filter(ObsBlock.pid == opt.pid)
+        for block in obsblock:
+            self.out('--Deleting observing block %s.%s.%s ...' % (block.pid,
+                                                                  block.blockid,
+                                                                  block.objid))
+            session.delete(block)
+
+        blockconfig = session.query(BlockConfig).filter(BlockConfig.pid == opt.pid)
+        for block in blockconfig:
+            self.out('--Deleting block config %s.%s.%s ...' % (block.pid,
+                                                               block.bid,
+                                                               block.bparid))
+            session.delete(block)
+
+        blocktargets = session.query(BlockPar).filter(BlockPar.pid == opt.pid)
+        for block in blocktargets:
+            self.out('--Deleting block %s.%s parameters...' % (block.pid,
+                                                               block.bid))
+            session.delete(block)
+
+        projects = session.query(Projects).filter(Projects.pid == opt.pid)
+        for project in projects:
+            self.out('--Deleting project %s' % (project.pid))
+            session.delete(project)
+
+        session.commit()
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="cleanProject",
+            help="Clean project database.",
+            helpGroup="PJ", actionGroup="Project")
+    def cleanProject(self, options):
+        # save a copy
+        if os.path.exists(DEFAULT_PROGRAM_DATABASE):
+            shutil.copy(DEFAULT_PROGRAM_DATABASE,
+                        "%s.%s.bak" % (DEFAULT_PROGRAM_DATABASE,
+                                       time.strftime("%Y%m%d%H%M%S")))
+
+        # delete all projects and related information
+        session = RSession()
+
+        self.out('-Cleaning project table from database.')
+
+        obsblock = session.query(ObsBlock).all()
+        for block in obsblock:
+            self.out('--Deleting observing block %s.%s.%s ...' % (block.pid,
+                                                                  block.blockid,
+                                                                  block.objid))
+            session.delete(block)
+
+        blockconfig = session.query(BlockConfig).all()
+        for block in blockconfig:
+            self.out('--Deleting block config %s.%s.%s ...' % (block.pid,
+                                                               block.bid,
+                                                               block.bparid))
+            session.delete(block)
+
+        blocktargets = session.query(BlockPar).all()
+        for block in blocktargets:
+            self.out('--Deleting block %s.%s parameters...' % (block.pid,
+                                                               block.bid))
+            session.delete(block)
+
+        projects = session.query(Projects).all()
+        for project in projects:
+            self.out('--Deleting project %s' % (project.pid))
+            session.delete(project)
+
+        session.commit()
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="addTargets",
+            help='Add targets to database from a text file. Does not check for duplicated sources.',
+            helpGroup="TR", actionGroup="TR")
+    def addTargets(self, opt):
+
+        if not opt.filename:
+            self.err(red('*') + 'Input not given. Use \'-f\'...')
+            return -1
+
+        self.out('-Reading target list from %s ...' % opt.filename)
+
+        targets = Table.read(opt.filename, format='ascii.csv')
+
+        # minimum required entries in input file
+        reqpar = ['ra', 'dec']
+
+        givedEntries = {}
+
+        for name in targets.dtype.names:
+            givedEntries[name.lower()] = name
+
+        for r in reqpar:
+            if not r in givedEntries.keys():
+                self.err(red('*') + 'Required parameter, %s, missing from input file...' % r)
+                return -1
+
+        # aditional entries
+        addpar = {'name': 'name', 'type': 'type', 'mag': 'targetMag',
+                  'epoch': 'targetEpoch',
+                  'magfilter': 'magFilter', 'link': 'link'}
+
+        session = RSession()
+
+        for i in range(len(targets)):
+
+            p = None
+            try:
+                p = Position.fromRaDec(str(targets['RA'][i]),
+                                       str(targets['DEC'][i]))
+            except ValueError:
+                self.err(red('*') + 'Object in line %i has invalid coordinates (%s,%s). Skipping...' % (
+                i, targets['RA'][i], targets['DEC'][i]))
+                pass
+            except:
+                raise
+
+            if p:
+                tpar = {'targetRa': p.ra.H,
+                        'targetDec': p.dec.D}
+                for pname in addpar.keys():
+                    if pname in givedEntries.keys():
+                        tpar[addpar[pname]] = targets[givedEntries[pname]][i]
+
+                target = Targets(**tpar)
+
+                self.out('--Adding %s...' % (target.name))
+
+                session.add(target)
+
+                session.commit()
+
+        self.out('-Done')
+        return 0
+
+    ############################################################################
+
+    @action(long="cleanTargetsList",
+            help='Delete all targets from the database',
+            helpGroup="TR", actionGroup="TR")
+    def cleanTargetsList(self, opt):
+
+        # save a copy
+        if os.path.exists(DEFAULT_PROGRAM_DATABASE):
+            shutil.copy(DEFAULT_PROGRAM_DATABASE,
+                        "%s.%s.bak" % (DEFAULT_PROGRAM_DATABASE,
+                                       time.strftime("%Y%m%d%H%M%S")))
+
+        session = RSession()
+
+        ntargets = int(session.query(Targets).count())
+
+        if ntargets == 0:
+            self.out('-Target list is alredy empty')
+            session.commit()
+            self.out('-Done')
+            return 0
+
+        targetList = session.query(Targets).all()
+
+        self.out('-Deleting all %i targets from database' % (ntargets))
+
+        for target in targetList:
+            session.delete(target)
+
+        session.commit()
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="addObservingBlock",
+            help='Add observing block definition to the database.',
+            helpGroup="OB", actionGroup="OB")
+    def addObservingBlock(self, opt):
+
+        if not opt.filename:
+            self.err(red('*') + 'Input not given. Use \'-f\'...')
+            return -1
+
+        self.out('-Reading observing blocks from %s' % (opt.filename))
+
+        blockList = Table.read(opt.filename, format='ascii.no_header')
+
+        session = RSession()
+
+        for entry in blockList:
+
+            block = entry.data
+
+            config = ConfigParser.RawConfigParser()
+
+            config.read(block[3])
+
+            try:
+                filters = config.get('blockconfig', 'filter').split(',')
+                exptime = config.get('blockconfig', 'exptime').split(',')
+                nexp = config.get('blockconfig', 'nexp').split(',')
+                imagetype = config.get('blockconfig', 'imagetype').split(',')
+            except:
+                self.err('No section blockconfig in file %s' % block[3])
+                raise
+
+            addblock = session.query(ObsBlock).filter(ObsBlock.objid == block[2]).filter(
+                ObsBlock.blockid == block[1]).filter(ObsBlock.pid == block[0]).filter(ObsBlock.pid == block[0])
+            if len(addblock[:]) > 0:
+                self.out('--Modifying block: %s' % addblock[0].id)
+                blockcnf = session.query(BlockConfig).filter(BlockConfig.bid == block[1])
+                addblock[0].objid = block[2],
+                addblock[0].blockid = block[1],
+                addblock[0].pid = block[0],
+                addblock[0].bparid = block[4]
+
+                for bb in blockcnf:
+                    session.delete(bb)
+                for i in range(len(filters)):
+                    blockcnf = BlockConfig(bid=block[1],
+                                           filter=filters[i],
+                                           exptime=exptime[i],
+                                           nexp=nexp[i],
+                                           imagetype=imagetype[i],
+                                           pid=block[0])
+                    session.add(blockcnf)
+
+            else:
+                self.out('--Adding block: %s' % block)
+                addblock = ObsBlock(objid=block[2],
+                                    blockid=block[1],
+                                    pid=block[0],
+                                    bparid=block[4])
+                session.add(addblock)
+                for i in range(len(filters)):
+                    blockcnf = BlockConfig(bid=block[1],
+                                           filter=filters[i],
+                                           exptime=exptime[i],
+                                           nexp=nexp[i],
+                                           imagetype=imagetype[i],
+                                           pid=block[0])
+                    session.add(blockcnf)
+
+            session.commit()
+            # blockcnf = session.query(BlockConfig).filter(BlockConfig.bid == block[1])
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="cleanObservingBlock",
+            help='Delete all observing blocks from the database.',
+            helpGroup="OB", actionGroup="OB")
+    def cleanObservingBlock(self, opt):
+
+        # save a copy
+        if os.path.exists(DEFAULT_PROGRAM_DATABASE):
+            shutil.copy(DEFAULT_PROGRAM_DATABASE,
+                        "%s.%s.bak" % (DEFAULT_PROGRAM_DATABASE,
+                                       time.strftime("%Y%m%d%H%M%S")))
+
+        session = RSession()
+
+        nblocks = int(session.query(ObsBlock).count())
+        nblocksCfg = int(session.query(BlockConfig).count())
+
+        if nblocks == 0 and nblocksCfg == 0:
+            self.out('-Observing block list is alredy empty')
+            session.commit()
+            self.out('-Done')
+            return 0
+
+        self.out('-Deleting all %i[%i] observing blocks from database' % (nblocks, nblocksCfg))
+
+        blockList = session.query(ObsBlock).all()
+
+        for block in blockList:
+            session.delete(block)
+
+        blockCfgList = session.query(BlockConfig).all()
+
+        for blockCfg in blockCfgList:
+            session.delete(blockCfg)
+
+        session.commit()
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="deleteObservingBlock",
+            help='Delete observing blocks of a specific project (PID) from the database.',
+            helpGroup="OB", actionGroup="OB")
+    def deleteObservingBlock(self, opt):
+
+        if not opt.pid:
+            self.err(red('*') + 'Specify project to delete with \'--pid\' ...')
+            return -1
+
+        # save a copy
+        if os.path.exists(DEFAULT_ROBOBS_DATABASE):
+            shutil.copy(DEFAULT_ROBOBS_DATABASE,
+                        "%s.%s.bak" % (DEFAULT_ROBOBS_DATABASE,
+                                       time.strftime("%Y%m%d%H%M%S")))
+
+        session = RSession()
+
+        nblocks = int(session.query(ObsBlock).filter(ObsBlock.pid == opt.pid).count())
+        nblocksCfg = int(session.query(BlockConfig).filter(BlockConfig.pid == opt.pid).count())
+
+        if nblocks == 0 and nblocksCfg == 0:
+            self.out('-No observing block with PID=%s to delete' % opt.pid)
+            session.commit()
+            self.out('-Done')
+            return 0
+
+        self.out('-Deleting all %i[%i] observing blocks with PID=%s from database' % (nblocks, nblocksCfg, opt.pid))
+
+        blockList = session.query(ObsBlock).filter(ObsBlock.pid == opt.pid).all()
+
+        for block in blockList:
+            session.delete(block)
+
+        blockCfgList = session.query(BlockConfig).filter(BlockConfig.pid == opt.pid).all()
+
+        for blockCfg in blockCfgList:
+            session.delete(blockCfg)
+
+        session.commit()
+
+        self.out('-Done')
+
+        return 0
+
+    ############################################################################
+
+    @action(long="cleanObservingLog",
+            help="Delete entries on Observing Log database. If no date is specified swipe clean the log database. User can specify start/end dates, only start or end works as well.",
+            actionGroup="")
+    def cleanObservingLog(self,opt):
+
+        session = RSession()
+
+        self.mktimes(opt)
+        # Query all obs logs entries
+
+        query = session.query(ObservingLog).filter(ObservingLog.time > self.obsStart,
+                                                   ObservingLog.time <= self.obsEnd)
+
+        for q in query:
+            session.delete(q)
+            session.commit()
+
+    @action(long="cleanQueue",
+            help="Delete all scheduled blocks from specified project.",
+            actionGroup="")
+    def cleanQueue(self,opt):
+
+        session = RSession()
+
+        if not opt.PID:
+            allpid = [ p.pid for p in session.query(Projects)]
+            merr = red('*')+'Specify project id (--pid). Available options are:'
+            for pid in allpid:
+                merr += '\n'+red('**')+'%s'%pid
+            self.err(merr)
+            session.commit()
+            return -1
+        else:
+            p = session.query(Projects).filter(Projects.pid == opt.PID).count()
+            if p == 0:
+                allpid = [ p.pid for p in session.query(Projects)]
+                merr = red('*')+'No project named %s on the database. Available options are:'%opt.PID
+                for pid in allpid:
+                    merr += '\n'+red('**')+'%s'%pid
+                self.err(merr)
+                session.commit()
+                return -1
+
+        self.out('-Deleting all scheduled observing blocks from project %s from the queue.'%opt.PID)
+
+        programs = session.query(Program).filter(Program.pid == opt.PID)
+
+        for p in programs:
+            self.out(red('--Deleting'))
+            self.out( red('---')+'%s'%p )
+            for act in p.actions:
+                session.delete(act)
+                self.out( red('---')+'%s'%act)
+            session.delete(p)
+            self.out(red('--Done'))
+
+        session.commit()
+
+        sched_blocks = session.query(ObsBlock).filter(ObsBlock.pid == opt.PID,
+                                                      ObsBlock.scheduled == 1)
+
+        for sb in sched_blocks:
+            sb.scheduled = 0
+
+        session.commit()
+
+        return 0
+
+    ############################################################################
+
+    @action(long="makeQueue",
+            help="Select targets from specified project to be observed. ",
+            actionGroup="")
+    def makeQueue(self,opt):
+
+        session = RSession()
+
+        if not opt.PID:
+            allpid = [ p.pid for p in session.query(Projects)]
+            merr = red('*')+'Specify project id (--pid). Available options are:'
+            for pid in allpid:
+                merr += '\n'+red('**')+'%s'%pid
+            self.err(merr)
+            session.commit()
+            return -1
+        else:
+            p = session.query(Projects).filter(Projects.pid == opt.PID).count()
+            if p == 0:
+                allpid = [ p.pid for p in session.query(Projects)]
+                merr = red('*')+'No project named %s on the database. Available options are:'%opt.PID
+                for pid in allpid:
+                    merr += '\n'+red('**')+'%s'%pid
+                self.err(merr)
+                session.commit()
+                return -1
+
+        if self.checkQueue(opt.PID):
+            self.out(red('+')+'Project already processed... Reprocessing a queue is a nasty job... Clean it and try again...')
+            session.commit()
+            return 0
+
+        self.out('-Selecting targets from project %s'%opt.PID)
+
+        self.mktimes(opt)
+
+        obsStart = self.obsStart
+        obsEnd = self.obsEnd
+        lststart = self.lststart-2.
+        lstend = self.lstend+2.
+        remoteManager = self.robobs.getManager()
+        site = remoteManager.getProxy(remoteManager.getResourcesByClass("Site")[0])
+
+        self.out('-Observation start @ %s | LST = %4.1f h'%(str(obsStart)[:19],lststart))
+        self.out('-Observation end   @ %s | LST = %4.1f h'%(str(obsEnd)[:19],lstend))
+
+        obsStart = site.JD(obsStart)
+        obsEnd = site.JD(obsEnd)
+
+        ohh = int(np.floor( (obsEnd-obsStart)*24. ))
+        omm = int( np.floor( ((obsEnd-obsStart)*24. - ohh) * 60. ))
+        self.out('-Observing time: %02i:%02i h'%(ohh,omm))
+
+        # Look for suitable observing blocks for this night...
+        FLAG = opt.PID
+
+        ## Select all observing blocks from this project that where not observed
+        ## and are not scheduled for observations
+
+        tList = None
+        if lststart < lstend:
+            tList = session.query(ObsBlock,BlockPar,Targets,BlockConfig).filter(ObsBlock.pid == FLAG,
+                                                                                BlockConfig.pid == FLAG,
+                                                                                BlockPar.pid == FLAG,
+                                                                                ObsBlock.scheduled==False,
+                                                                                ObsBlock.observed==False,
+                                                                                Targets.targetRa > lststart,
+                                                                                Targets.targetRa < lstend).join(BlockPar).join(Targets).join(BlockConfig).order_by(ObsBlock.blockid)
+        else:
+
+            tList = session.query(ObsBlock,BlockPar,Targets,BlockConfig).filter(ObsBlock.pid == FLAG,
+                                                                                BlockConfig.pid == FLAG,
+                                                                                BlockPar.pid == FLAG,
+                                                                                ObsBlock.scheduled==False,
+                                                                                ObsBlock.observed==False,
+                                                                                or_(and_(Targets.targetRa > lststart,
+                                                                                         Targets.targetRa < 24.),
+                                                                                    and_(Targets.targetRa > 0.,
+                                                                                         Targets.targetRa < lstend))).join(Targets).join(BlockConfig).order_by(ObsBlock.blockid)
+
+
+        if len(tList[:]) == 0:
+            self.out(blue('+')+'No targets available from this project this night...')
+            session.commit()
+            return -1
+        self.out('-Found %i suitable targets...'%(len(tList[:])))
+
+        ## Separate observing blocks by scheduling algoriths
+
+        schedAlgList = np.array([t[1].schedalgorith for t in tList])
+        uSAL = np.unique(schedAlgList)
+
+        self.out('-Found %i types of scheduling algorith...'%(len(uSAL)))
+        for i,sa_type in enumerate(uSAL):
+            self.out('--SA Type[%i] = %i'%(i+1,sa_type))
+
+        for sAL in uSAL:
+
+            nquery = tList.filter(BlockPar.schedalgorith == sAL)
+
+            qFunction = algorithms.ScheduleFunction(sAL,
+                                                    obsStart=obsStart,
+                                                    obsEnd=obsEnd,
+                                                    s=self,
+                                                    query=nquery,
+                                                    site=site)
+
+            obsTargets = qFunction(self.bestSlotLen(opt.PID))
+
+            # First schedule all
+            for bid in obsTargets:
+                if bid['blockid'] > 0:
+                    oblock = nquery.filter(ObsBlock.blockid == bid['blockid'])
+                    self.addObservation(oblock,bid['start'])
+
+            # Now mark as scheduled
+            for bid in obsTargets:
+                if bid['blockid'] > 0:
+                    oblock = nquery.filter(ObsBlock.blockid == bid['blockid'])
+                    for o in oblock:
+                        o[0].scheduled = True
+                    session.commit()
+
+        session.commit()
+
+    ############################################################################
+
+    @action(help="Start manager", helpGroup="RUN", actionGroup="RUN")
+    def start(self, options):
+
+        robobs = self.robobs
+        self.out('Starting robobs... ',end='')
+
+        if robobs.start():
+            self.out(green('OK'))
+        else:
+            self.out(red("FAILED"))
+
+        return 0
+
+    ############################################################################
+
+    @action(help="Stop manager", helpGroup="RUN", actionGroup="RUN")
+    def stop(self, options):
+
+        robobs = self.robobs
+
+        self.out('Stopping robobs... ',end='')
+        if robobs.stop():
+            self.out(green('OK'))
+        else:
+            self.out(red('FAILED'))
+
+        return 0
+
+    ############################################################################
+
+    @action(help="Monitor manager", helpGroup="RUN", actionGroup="RUN")
+    def monitor(self, options):
+
+        return 0
+
+    ############################################################################
+
+    def mktimes(self,opt):
+        # Determining start/end times
+
+        remoteManager = self.robobs.getManager()
+        site = remoteManager.getProxy(remoteManager.getResourcesByClass("Site")[0])
+
+        self.obsStart = site.sunset_twilight_end()
+        self.obsEnd = site.sunrise_twilight_begin(self.obsStart)
+
+        if opt.JDstart:
+            self.obsStart = datetimeFromJD(opt.JDstart)
+        elif opt.dstart:
+            day,hour = opt.dstart.split('-')
+            yy,mm,dd = [int(val) for val in day.split('/')]
+            hh,mi,ss = [int(val) for val in hour.split(':') ]
+            self.obsStart = dt.datetime(yy,mm,dd,hh,mi,ss)
+
+        if opt.JDend:
+            self.obsEnd = datetimeFromJD(opt.JDend)
+        elif opt.dend:
+            day,hour = opt.dend.split('-')
+            yy,mm,dd = [int(val) for val in day.split('/')]
+            hh,mi,ss = [int(val) for val in hour.split(':') ]
+            self.obsEnd = dt.datetime(yy,mm,dd,hh,mi,ss)
+
+        self.lststart = site.LST(self.obsStart).toH()
+        self.lstend = site.LST(self.obsEnd).toH()
+        self.mjdStart = site.MJD(self.obsStart)
+        self.mjdEnd =  site.MJD(self.obsEnd)
+
+    ############################################################################
+
+    def checkQueue(self, PID):
+        '''Check if projet was already processed...
+            '''
+
+        session = RSession()
+
+        progs = session.query(Program).filter(Program.pid == PID).first()
+
+        if progs is not None:
+            session.commit()
+            return True
+
+        session.commit()
+        return False
+
+    ############################################################################
+
+    def bestSlotLen(self,pid):
+
+        session = RSession()
+
+        query = session.query(BlockConfig).filter(BlockConfig.pid == pid)
+
+        slen = 0
+
+        tottime = np.array([])
+
+        bid = -1
+        for blk in query:
+            if bid != blk.bid:
+                tottime = np.append(tottime,0.)
+                bid = blk.bid
+            tottime[-1] += blk.nexp*blk.exptime
+
+        session.commit()
+
+        return tottime.min()/2.
+
+    ############################################################################
+
+    def addObservation(self,block,obstime):
+
+        session = RSession()
+
+        self.out('%s'%block[:][0][0])
+        self.out('%s'%block[:][0][1])
+
+        targetList = np.array([])
+
+        objname = ""
+        programs = []
+
+        for subblock in block:
+
+            if not subblock[0].objid in targetList:
+
+                self.out('\t%s'%subblock[2])
+
+                targetList = np.append(targetList,subblock[0].objid)
+
+                objname = subblock[2].name
+                pquery = session.query(Projects).filter(Projects.pid == subblock[0].pid)
+
+                program = Program(tid=subblock[0].objid,name = objname,
+                                  pi='',priority=pquery[0].priority,
+                                  slewAt=obstime-2400000.5,
+                                  pid=subblock[0].pid,
+                                  blockid=subblock[0].bparid)#,exposeAt=obstime)
+
+
+                position = Position.fromRaDec(subblock[2].targetRa,
+                                              subblock[2].targetDec,
+                                              'J%.0f'%subblock[2].targetEpoch)
+
+                imgtype = subblock[3].imagetype.upper()
+
+                if imgtype == "OBJECT":
+                    if position:
+                        program.actions.append(Point(targetRaDec=position))
+                    else:
+                        program.actions.append(Point(targetName=objname))
+                elif imgtype == "FLAT":
+                    site = self._remoteManager.getProxy("/Site/0")
+                    flatPosition = Position.fromAltAz(site['flat_alt'], site['flat_az'])
+                    program.actions.append(t80db.Point(targetAltAz=flatPosition))
+                else:
+                    self.out(blue('+')+'No target to point at...')
+
+            self.out( '\t\t%s'%(subblock[3]))
+            filter  = subblock[3].filter
+            exptime = subblock[3].exptime
+            frames  = subblock[3].nexp
+            imgtype = subblock[3].imagetype.upper()
+
+            if imgtype in ("OBJECT", "FLAT"):
+                shutter = "OPEN"
+            else:
+                shutter = "CLOSE"
+
+            if imgtype == "BIAS":
+                exptime = 0
+
+            if imgtype in ("BIAS", "DARK"):
+                filter = None
+
+            program.actions.append(t80db.Expose(shutter=shutter,
+                                          filename="%s-%s-$DATE-$TIME" % (subblock[0].pid,objname.replace(" ", "")),
+                                          filter=filter,
+                                          frames=frames,
+                                          exptime=exptime,
+                                          imageType=imgtype,
+                                          objectName=objname))
+
+            programs.append(program)
+        #subblock[0].scheduled = True
+
+        #session.commit()
+
+        session.add_all(programs)
+        session.commit()
+
+################################################################################
+
+def main():
+    cli = RobObs()
+    cli.run(sys.argv)
+    cli.wait()
+
+################################################################################
+
+if __name__ == '__main__':
+    main()
+
+################################################################################
