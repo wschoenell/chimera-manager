@@ -23,8 +23,16 @@ class List(Base):
     lastUpdate = Column(DateTime, default=None)
     lastChange = Column(DateTime, default=None)
     name       = Column(String,default=None)
-    eager      = Column(Boolean, default=False) # Run response every time. Normal operation is run
-                                                # only when status change
+
+    # Run response every time. Normal operation is run only when status change
+    eager      = Column(Boolean, default=False)
+
+    # Run responses in eager mode? If True and one of the responses fails it will just ignore and keep running the
+    # other items. Otherwise it will stop if one of the responses fails. Usefull for separate "close down" operations
+    # where you need to make sure you tried to close everything regardless of any problem from "open" operations where
+    # you want the queue to stop if one of the responses fails (e.g. open dome, open mirror and take flats).
+    eager_response      = Column(Boolean, default=True)
+
 
     # check_id     = Column(Integer)
     # response_id     = Column(Integer)

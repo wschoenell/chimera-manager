@@ -4,13 +4,14 @@ Implement basic responses to some results on the checklist. The user can impleme
 as long as they inherit the Response class.
 '''
 
-import os
+import os, sys
 import copy
 import subprocess
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
 from chimera_manager.core.exceptions import StatusUpdateException
 from chimera_manager.controllers import model
+from chimera_manager.controllers.exceptions import DomeActionException, TelescopeActionException
 
 class BaseResponse(object):
 
@@ -96,65 +97,75 @@ class DomeAction(BaseResponse):
         manager = DomeAction.manager
         # dome = DomeAction.dome[0]
 
+        def openFunc(check, open):
+            if manager.canOpen():
+                # Try to switch dome flag to operating
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.OPERATING)
+                except StatusUpdateException, e:
+                    manager.broadCast(e)
+                    raise
+                except Exception, e:
+                    t, v, tb = sys.exc_info()
+                    # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR and
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        raise t, v, tb
+                else:
+                    # I will only try to open the slit if nothing failed
+                    if not check():
+                        open()
+            else:
+                manager.broadCast("Cannot open dome slit due to manager constraints.")
+                # Usefull for stopping nested responses
+                raise DomeActionException("Cannot open dome slit due to manager constraints.")
+
+        def closeFunc(check,close):
+            # Try to switch dome flag to READY
+            try:
+                manager.setFlag("dome",
+                                IOFlag.READY)
+            except StatusUpdateException, e:
+                manager.broadCast(e)
+                raise
+            except Exception, e:
+                t, v, tb = sys.exc_info()
+                manager.broadCast(e)
+                # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR and
+                # raise the exception
+                try:
+                    manager.setFlag("dome",
+                                    IOFlag.ERROR)
+                except:
+                    raise t, v, tb
+            finally:
+                # I will try to close the dome regardless of flag switching problems
+                try:
+                    if check():
+                        close()
+                except:
+                    manager.broadCast("Could not close dome slit!")
+                    t, v, tb = sys.exc_info()
+                    try:
+                        manager.setFlag("dome",
+                                        IOFlag.ERROR)
+                    except:
+                        pass
+                    raise t, v, tb
+
         for dome in DomeAction.dome:
             if check.mode == 0:
                 # Open Dome Slit
-                # Check if dome can be opened
-                if manager.canOpen():
-                    try:
-                        manager.setFlag("dome",
-                                        IOFlag.OPERATING)
-
-                        # I will only try to open the slit if I can set the flag to operating
-                        if not dome.isSlitOpen():
-                            dome.openSlit()
-
-
-                    except StatusUpdateException, e:
-                        manager.broadCast(e)
-                    except:
-                        # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                        try:
-                            manager.setFlag("dome",
-                                            IOFlag.ERROR)
-                        except:
-                            pass
-                else:
-                    manager.broadCast("Cannot open dome slit due to manager constraints.")
+                openFunc(dome.isSlitOpen,dome.openSlit)
             elif check.mode == 1:
                 # Close dome Slit
-                try:
-                    manager.setFlag("dome",
-                                    IOFlag.READY)
-                except StatusUpdateException, e:
-                    manager.broadCast(e)
-                except Exception, e:
-                    manager.broadCast(e)
-
-                # I will try to close the dome regardless of flag switching problems
-                if dome.isSlitOpen():
-                    dome.closeSlit()
+                closeFunc(dome.isSlitOpen,dome.closeSlit)
             elif check.mode == 2:
                 # Open dome flap
-                # Check if dome can be opened
-                if manager.canOpen():
-                    try:
-                        manager.setFlag("dome",
-                                        IOFlag.OPERATING)
-
-                        # I will only try to open the flap if I can set the flag to operating
-                        if not dome.isFlapOpen():
-                            dome.openFlap()
-
-                    except StatusUpdateException, e:
-                        manager.broadCast(e)
-                    except:
-                        # If it was not a StatusUpdateException. Try to Switch the status operation to ERROR
-                        try:
-                            manager.setFlag("dome",
-                                            IOFlag.ERROR)
-                        except:
-                            pass
+                openFunc(dome.isFlapOpen, dome.openFlap)
             elif check.mode == 3:
                 # Close dome flap
                 # Dome may still be operating with Flap closed. Will close without any flag changes
@@ -163,6 +174,7 @@ class DomeAction(BaseResponse):
                         dome.closeFlap()
                     except Exception, e:
                         manager.broadCast(e)
+                        raise
             elif check.mode == 4:
                 # Move dome to "parameter" angle
                 from chimera.util.coord import Coord
@@ -170,6 +182,63 @@ class DomeAction(BaseResponse):
                 dome.stand()
                 manager.broadCast("Moving dome to %s ... " % target)
                 dome.slewToAz(target)
+            elif check.mode == 5:
+                # switch fan on
+                try:
+                    domefan = dome.getManager().getProxy(str(check.parameter))
+
+                    if domefan.isSwitchedOn():
+                        manager.broadCast("Fan is already running... ")
+                    elif domefan.switchOn():
+                        manager.broadCast("Dome fan started")
+                    else:
+                        manager.broadCast("Could not start dome fan")
+                except Exception, e:
+                    manager.broadCast("Could not start dome fan. %s" % repr(e))
+                    raise
+            elif check.mode == 6:
+                # switch fan off
+                try:
+                    domefan = dome.getManager().getProxy(str(check.parameter))
+
+                    if not domefan.isSwitchedOn():
+                        manager.broadCast("Fan is already off... ")
+                    elif domefan.switchOff():
+                        manager.broadCast("Dome fan stopped")
+                    else:
+                        manager.broadCast("Could not stop dome fan")
+                except Exception, e:
+                    manager.broadCast("Could not stop dome fan. %s" % repr(e))
+                    raise
+            elif check.mode == 7:
+                # switch lamp on
+                try:
+                    domelamp = dome.getManager().getProxy(str(check.parameter))
+
+                    if domelamp.isSwitchedOn():
+                        manager.broadCast("Lamp is already on... ")
+                    elif domelamp.switchOn():
+                        manager.broadCast("Lamp switched on")
+                    else:
+                        manager.broadCast("Could not switch lamp on")
+                except Exception, e:
+                    manager.broadCast("Could not switch lamp on. %s" % repr(e))
+                    raise
+            elif check.mode == 8:
+                # switch lamp off
+                try:
+                    domelamp = dome.getManager().getProxy(str(check.parameter))
+
+                    if not domelamp.isSwitchedOn():
+                        manager.broadCast("Lamp is already off... ")
+                    elif domelamp.switchOff():
+                        manager.broadCast("Lamp switched off")
+                    else:
+                        manager.broadCast("Could not switch lamp off")
+                except Exception, e:
+                    manager.broadCast("Could not switch lamp off. %s" % repr(e))
+                    raise
+
 
     @staticmethod
     def model():
@@ -189,11 +258,13 @@ class TelescopeAction(BaseResponse):
                     tel.unpark()
                 except Exception, e:
                     manager.broadCast(e)
+                    raise
             elif check.mode == 1:
                 try:
                     tel.park()
                 except Exception, e:
                     manager.broadCast(e)
+                    raise
             elif check.mode == 2:
                 if manager.canOpen():
                     try:
@@ -201,15 +272,20 @@ class TelescopeAction(BaseResponse):
                         tel.openCover()
                     except Exception, e:
                         manager.broadCast(e)
+                        raise
                 else:
                     manager.broadCast("Cannot open telescope cover due to manager constraints.")
+                    raise TelescopeActionException("Cannot open telescope cover due to manager constraints.")
             elif check.mode == 3:
                 try:
                     tel.closeCover()
                 except Exception, e:
                     manager.broadCast(e)
+                    raise
             else:
                 manager.broadCast("Not implemented mode %i for telescope" % (check.mode))
+                raise TelescopeActionException("Not implemented mode %i for telescope" % (check.mode))
+
     @staticmethod
     def model():
         return model.TelescopeAction
@@ -222,7 +298,7 @@ class DomeFan(BaseResponse):
         dome = DomeFan.dome
         manager = DomeFan.manager
 
-        domefan = dome.getManager().getProxy(check.fan)
+        domefan = dome.getManager().getProxy(str(check.fan))
 
         if domefan.isSwitchedOn():
             manager.broadCast("Fan is already running... ")
@@ -241,6 +317,7 @@ class DomeFan(BaseResponse):
 
         except Exception, e:
             manager.broadCast("Could not start dome fan. %s" % repr(e))
+            raise
 
     @staticmethod
     def model():
@@ -265,6 +342,7 @@ class LockInstrument(BaseResponse):
                                    check.key)
         except Exception,e:
             manager.broadCast(e)
+            raise
 
     @staticmethod
     def model():
@@ -283,9 +361,11 @@ class UnlockInstrument(BaseResponse):
                 manager.broadCast('%s unlocked with key %s' % (check.instrument,
                                                                 check.key))
         except StatusUpdateException, e:
+            manager.broadCast('%s' % repr(e))
             pass
         except Exception, e:
             manager.broadCast(e)
+            raise
 
 
     @staticmethod
@@ -388,7 +468,7 @@ class ConfigureScheduler(BaseResponse):
                 except yaml.YAMLError as exc:
 
                     manager.broadCast(exc)
-                    return -1
+                    raise
 
             session = Session()
 
