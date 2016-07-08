@@ -176,11 +176,17 @@ class CheckList(object):
                     self.controller.itemResponseBegin(item,self.currentResponse)
                     self.currentResponse.process(response)
                 except KeyError:
-                    self.log.debug("No handler to response %s. Skipping it" % response.response_id)
+                    self.log.warning("No handler to response %s. Skipping it" % response.response_id)
                     response_status = ResponseStatus.ERROR
+                    if not item.eager_response:
+                        self.log.info("Running in non-eager response mode. Stopping.")
+                        break
                 except Exception, e:
                     self.log.exception(e)
                     response_status = ResponseStatus.ERROR
+                    if not item.eager_response:
+                        self.log.info("Running in non-eager response mode. Stopping.")
+                        break
                 finally:
                     self.controller.itemResponseComplete(item, self.currentResponse, status)
 

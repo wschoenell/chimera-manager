@@ -23,8 +23,16 @@ class List(Base):
     lastUpdate = Column(DateTime, default=None)
     lastChange = Column(DateTime, default=None)
     name       = Column(String,default=None)
-    eager      = Column(Boolean, default=False) # Run response every time. Normal operation is run
-                                                # only when status change
+
+    # Run response every time. Normal operation is run only when status change
+    eager      = Column(Boolean, default=False)
+
+    # Run responses in eager mode? If True and one of the responses fails it will just ignore and keep running the
+    # other items. Otherwise it will stop if one of the responses fails. Usefull for separate "close down" operations
+    # where you need to make sure you tried to close everything regardless of any problem from "open" operations where
+    # you want the queue to stop if one of the responses fails (e.g. open dome, open mirror and take flats).
+    eager_response      = Column(Boolean, default=True)
+
 
     # check_id     = Column(Integer)
     # response_id     = Column(Integer)
@@ -35,8 +43,12 @@ class List(Base):
                          cascade="all, delete, delete-orphan")
 
     def __str__ (self):
-        return "Item[%s]:%s Status[%i] LasUpdate: %s"%(self.name,'Eager' if self.eager else 'Normal',self.status,
-                                                       self.lastUpdate)
+        return "Item[%s.%s]:%s/%s Status[%i] LasUpdate: %s"%(self.name,
+                                                             'Active' if self.active else 'Inactive',
+                                                             'Eager' if self.eager else 'Normal',
+                                                          'EagerResponse' if self.eager_response else 'CascatedResponse',
+                                                          self.status,
+                                                          self.lastUpdate)
 
 class Check(Base):
 

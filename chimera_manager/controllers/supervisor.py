@@ -6,8 +6,8 @@ from chimera_manager.controllers.checklist import CheckList
 from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
 from chimera_manager.controllers.states import State
 from chimera_manager.core.exceptions import StatusUpdateException
-from chimera_manager.core.constants import SYSTEM_CONFIG_DIRECTORY
 
+from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.lock import lock
 from chimera.core.event import event
@@ -283,7 +283,8 @@ class Supervisor(ChimeraObject):
         if instrument is None:
             flag = True
             for inst_ in self._operationStatus.keys():
-                flag = flag and (self.getFlag(inst_) == InstrumentOperationFlag.READY)
+                flag = flag and ( (self.getFlag(inst_) == InstrumentOperationFlag.READY) or
+                                  (self.getFlag(inst_) == InstrumentOperationFlag.OPERATING) )
             return flag
         else:
             return (self.getFlag(instrument) == InstrumentOperationFlag.READY) and \

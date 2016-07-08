@@ -47,9 +47,9 @@ class TimeHandler(CheckHandler):
     @staticmethod
     @requires("site")
     def process(check):
-        site = TimeHandler.site
+        site = TimeHandler.site[0]
 
-
+        ut = site.ut()
         reftime = None
         if abs(check.mode) == 1 or check.mode == 0:
             reftime = site.sunset()
@@ -70,14 +70,13 @@ class TimeHandler(CheckHandler):
             return False,"Could not determined reference time."
         elif check.mode >= 0:
             reftime += check.deltaTime
-            ut = site.ut()
             ret = ut.time() > reftime.time()
             msg = "Reference time (%s) has passed. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) still in the future. Now %s"%(reftime,ut)
             return ret,msg
         else:
             reftime += check.deltaTime
-            ut = site.ut()
+            # ut = site.ut()
             ret = ut.time() < reftime.time()
             msg = "Reference time (%s) still in the future. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) has passed. Now %s"%(reftime,ut)
@@ -100,7 +99,7 @@ class HumidityHandler(CheckHandler):
     def process(check):
 
         weatherstations = HumidityHandler.weatherstations
-        site = HumidityHandler.site
+        site = HumidityHandler.site[0]
 
         manager = HumidityHandler.manager
 
@@ -155,7 +154,7 @@ class TemperatureHandler(CheckHandler):
     @requires("weatherstations")
     def process(check):
         weatherstations = TemperatureHandler.weatherstations
-        site = TemperatureHandler.site
+        site = TemperatureHandler.site[0]
 
         manager = TemperatureHandler.manager
 
@@ -211,7 +210,7 @@ class WindSpeedHandler(CheckHandler):
     @requires("weatherstations")
     def process(check):
         weatherstations = WindSpeedHandler.weatherstations
-        site = WindSpeedHandler.site
+        site = WindSpeedHandler.site[0]
 
         manager = WindSpeedHandler.manager
 
@@ -285,7 +284,7 @@ class TransparencyHandler(CheckHandler):
     @requires("weatherstations")
     def process(check):
         weatherstations = WindSpeedHandler.weatherstations
-        site = WindSpeedHandler.site
+        site = WindSpeedHandler.site[0]
 
         manager = WindSpeedHandler.manager
 
@@ -361,7 +360,7 @@ class DewHandler(CheckHandler):
     @requires("weatherstations")
     def process(check):
         weatherstations = DewHandler.weatherstations
-        site = DewHandler.site
+        site = DewHandler.site[0]
 
         temperature = None # weatherstation.temperature()
         dewpoint = None # weatherstation.dew_point()
@@ -392,7 +391,7 @@ class DewHandler(CheckHandler):
             ret = check.tempdiff < tempdiff
             msg = "Nothing to do. Dew point difference " \
                   "higher than threshold (%.2f/%.2f)."%(tempdiff, check.tempdiff) if not ret \
-                else "Windspeed lower than threshold (%.2f/%.2f)."%(tempdiff, check.tempdiff)
+                else "Dew point difference lower than threshold (%.2f/%.2f)."%(tempdiff, check.tempdiff)
 
             if not ret:
                 check.time = site.ut().replace(tzinfo=None)
@@ -426,7 +425,7 @@ class DomeHandler(CheckHandler):
     @staticmethod
     @requires("dome")
     def process(check):
-        dome = DomeHandler.dome
+        dome = DomeHandler.dome[0]
 
         ret,msg = False, ""
 
@@ -459,7 +458,7 @@ class TelescopeHandler(CheckHandler):
     @staticmethod
     @requires("telescope")
     def process(check):
-        telescope = TelescopeHandler.telescope
+        telescope = TelescopeHandler.telescope[0]
 
         ret,msg = False, ""
 
