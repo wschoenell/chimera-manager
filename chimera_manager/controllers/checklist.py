@@ -231,7 +231,9 @@ class CheckList(object):
         active_keys = [k.active for k in iostatus_keys]
         # session.commit()
 
-        self.log.debug("Current instrument status is %s" % InstrumentOperationFlag[iostatus.status])
+        self.log.debug("Update %s status: %s -> %s" % (instrument,
+                                                       InstrumentOperationFlag[iostatus.status],
+                                                       status))
         if iostatus.status != InstrumentOperationFlag.LOCK.index: # Instrument currently unlocked
             iostatus.status = status.index # just flip status flag
 
