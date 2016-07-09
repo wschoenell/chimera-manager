@@ -126,8 +126,10 @@ class DomeAction(BaseResponse):
         def closeFunc(check,close):
             # Try to switch dome flag to READY
             try:
-                manager.setFlag("dome",
-                                IOFlag.READY)
+                cflag = manager.getFlag("dome")
+                if cflag == IOFlag.OPERATING:
+                    manager.setFlag("dome",
+                                    IOFlag.READY)
             except StatusUpdateException, e:
                 manager.broadCast(e)
                 raise
