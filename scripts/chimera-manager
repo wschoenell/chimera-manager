@@ -176,7 +176,7 @@ checklist:
 
     @action(long="delete", help="Delete items from database.",
             helpGroup="DB", actionGroup="DB")
-    def updateDatabase(self, options):
+    def deleteItems(self, options):
         self.generateDatabase(options)
 
         # save a copy
