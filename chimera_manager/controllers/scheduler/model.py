@@ -5,6 +5,12 @@ from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
 
+from chimera.controllers.scheduler.model import (Program as CProgram,
+                                                 AutoFocus as CAutoFocus,
+                                                 AutoFlat as CAutoFlat,
+                                                 PointVerify as CPointVerify,
+                                                 Point as CPoint,
+                                                 Expose as CExpose)
 from chimera.util.position import Position
 
 import logging as log
@@ -144,12 +150,29 @@ class Program(Base):
     pid = Column(String, ForeignKey("projects.pid"))  # Project ID
     blockid = Column(Integer, ForeignKey("blockpar.bid"))  # Block ID
 
-    # actions = relation("Action", backref=backref("program", order_by="Action.id"),
-    #                    cascade="all, delete, delete-orphan")
+    actions = relation("Action", backref=backref("program", order_by="Action.id"),
+                       cascade="all, delete, delete-orphan")
 
     def __str__(self):
         return "#%d %s pi:%s" % (self.id, self.name, self.pi)
 
+    def chimeraProgram(self):
+        cp = CProgram()
+
+        cp.tid      = self.tid
+        cp.name     = self.name
+        cp.pi       = self.pi
+        cp.priority = self.priority
+        cp.createdAt= self.createdAt
+        cp.finished = self.finished
+        cp.slewAt   = self.slewAt
+        cp.exposeAt = self.exposeAt
+
+        for act in self.actions:
+            chim_act = act.chimeraAction()
+            self.actions.append(act)
+
+        return cp
 
 class ObservingLog(Base):
     __tablename__ = "observinglog"
@@ -167,6 +190,149 @@ class ObservingLog(Base):
                                               self.priority,
                                               self.action)
 
+class Action(Base):
+
+    id         = Column(Integer, primary_key=True)
+    program_id = Column(Integer, ForeignKey("program.id"))
+    action_type = Column('type', String(100))
+
+
+    __tablename__ = "action"
+    __mapper_args__ = {'polymorphic_on': action_type}
+
+class AutoFocus(Action):
+    __tablename__ = "action_focus"
+    __mapper_args__ = {'polymorphic_identity': 'AutoFocus'}
+
+    id     = Column(Integer, ForeignKey('action.id'), primary_key=True)
+    start   = Column(Integer, default=0)
+    end     = Column(Integer, default=1)
+    step    = Column(Integer, default=1)
+    filter  = Column(String, default=None)
+    exptime = Column(Float, default=1.0)
+    binning = Column(String, default=None)
+    window  = Column(String, default=None)
+
+    def __str__ (self):
+        return "autofocus: start=%d end=%d step=%d exptime=%d" % (self.start, self.end, self.step, self.exptime)
+
+    def chimeraAction(self):
+
+        chim_act = CAutoFocus()
+        chim_act.start = self.start
+        chim_act.end = self.end
+        chim_act.step = self.step
+        chim_act.filter = self.filter
+        chim_act.exptime = self.exptime
+        chim_act.binning = self.binning
+        chim_act.window = self.window
+
+        return chim_act
+
+class AutoFlat(Action):
+    __tablename__ = "action_flat"
+    __mapper_args__ = {'polymorphic_identity': 'AutoFlats'}
+
+    id     = Column(Integer, ForeignKey('action.id'), primary_key=True)
+    filter  = Column(String, default=None)
+    frames     = Column(Integer, default=1)
+
+    def chimeraAction(self):
+
+        ca = CAutoFlat()
+        ca.filter = self.filter
+        ca.frames = self.frames
+
+        return ca
+
+class PointVerify(Action):
+    __tablename__ = "action_pv"
+    __mapper_args__ = {'polymorphic_identity': 'PointVerify'}
+
+    id     = Column(Integer, ForeignKey('action.id'), primary_key=True)
+    here   = Column(Boolean, default=None)
+    choose = Column(Boolean, default=None)
+
+    def __str__ (self):
+        if self.choose is True:
+            return "pointing verification: system defined field"
+        elif self.here is True:
+            return "pointing verification: current field"
+
+    def chimeraAction(self):
+
+        ca = CPointVerify()
+
+        ca.here = self.here
+        ca.choose = self.choose
+
+        return ca
+
+class Point(Action):
+    __tablename__ = "action_point"
+    __mapper_args__ = {'polymorphic_identity': 'Point'}
+
+    id          = Column(Integer, ForeignKey('action.id'), primary_key=True)
+    targetRaDec = Column(PickleType, default=None)
+    targetAltAz = Column(PickleType, default=None)
+    targetName  = Column(String, default=None)
+
+    def __str__ (self):
+        if self.targetRaDec is not None:
+            return "point: (ra,dec) %s" % self.targetRaDec
+        elif self.targetAltAz is not None:
+            return "point: (alt,az) %s" % self.targetAltAz
+        elif self.targetName is not None:
+            return "point: (object) %s" % self.targetName
+
+    def chimeraAction(self):
+        ca = CPoint()
+
+        if self.targetRaDec is not None:
+            ca.targetRaDec = self.targetRaDec
+        elif self.targetAltAz is not None:
+            ca.targetAltAz = self.targetAltAz
+        elif self.targetName is not None:
+            ca.targetName = self.targetName
+
+        return ca
+
+class Expose(Action):
+    __tablename__ = "action_expose"
+    __mapper_args__ = {'polymorphic_identity': 'Expose'}
+
+    id         = Column(Integer, ForeignKey('action.id'), primary_key=True)
+    filter     = Column(String, default=None)
+    frames     = Column(Integer, default=1)
+
+    exptime    = Column(Integer, default=5)
+
+    binning    = Column(Integer, default=None)
+    window     = Column(Float, default=None)
+
+    shutter    = Column(String, default="OPEN")
+
+    imageType  = Column(String, default="")
+    filename   = Column(String, default="$DATE-$TIME")
+    objectName = Column(String, default="")
+
+    def __str__ (self):
+        return "expose: exptime=%d frames=%d type=%s" % (self.exptime, self.frames, self.imageType)
+
+    def chimeraAction(self):
+        ca = CExpose()
+
+        ca.filter      = self.filter
+        ca.frames      = self.frames
+        ca.exptime     = self.exptime
+        ca.binning     = self.binning
+        ca.window      = self.window
+        ca.shutter     = self.shutter
+        ca.imageType   = self.imageType
+        ca.filename    = self.filename
+        ca.objectName  = self.objectName
+
+        return ca
 ###
 
 #metaData.drop_all(engine)

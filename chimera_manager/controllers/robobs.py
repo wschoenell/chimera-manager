@@ -5,14 +5,14 @@ import time
 import numpy as np
 
 from chimera_manager.controllers.scheduler.model import Session as RSession
-from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar)
+from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, AutoFocus, Point, Expose)
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.site import datetimeFromJD
 from chimera.controllers.scheduler.states import State as SchedState
 from chimera.controllers.scheduler.status import SchedulerStatus
-from chimera.controllers.scheduler.model import Session
+from chimera.controllers.scheduler import model
 from chimera.util.position import Position
 from chimera.util.enum import Enum
 from chimera.util.output import blue, green, red
@@ -102,25 +102,25 @@ class RobObs(ChimeraObject):
         sched.stateChanged -= self.getProxy()._watchStateChanged
 
     def _watchProgramBegin(self,program):
-        session = Session()
+        session = model.Session()
         program = session.merge(program)
         self._debuglog.debug('Program %s started' % program)
 
     def _watchProgramComplete(self, program, status, message=None):
-        session = Session()
+        session = model.Session()
         program = session.merge(program)
         self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
                                                                     status,
                                                                     message))
 
     def _watchActionBegin(self,action, message):
-        session = Session()
+        session = model.Session()
         action = session.merge(action)
         self._debuglog.debug("%s:%s %s ..." % (blue("[action] "), action,message), end="")
 
 
     def _watchActionComplete(self,action, status, message=None):
-        session = Session()
+        session = model.Session()
         action = session.merge(action)
 
         if status == SchedulerStatus.OK:
@@ -134,13 +134,20 @@ class RobObs(ChimeraObject):
 
         self._debuglog.debug("State changed %s -> %s..." % (oldState,
                                                             newState))
+        session = RSession()
+        csession = model.Session()
 
         if oldState == SchedState.IDLE and newState == SchedState.OFF:
             if self.rob_state == RobState.ON:
                 self._debuglog.debug("Scheduler went from BUSY to OFF. Needs resheduling...")
                 program = self.reshedule()
+                program = session.merge(program)
+
                 if program is not None:
                     self._debuglog.debug("Adding program %s to sheduler and starting." % program)
+                    cprogram = program.chimeraProgram()
+                    csession.add(cprogram)
+                    csession.commit()
                 else:
                     self._debuglog.debug("No program on robobs queue.")
             else:
@@ -172,7 +179,7 @@ class RobObs(ChimeraObject):
             # Program should be done right away!
             return program
         elif program:
-            self._debuglog.warning('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program.slewAt))
+            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program.slewAt))
 
         for p in plist[1:]:
 
@@ -192,7 +199,7 @@ class RobObs(ChimeraObject):
                 # if condition is False, project cannot be executed. Go to next in the list
                 continue
 
-            self._debuglog.warning('Current program length: %.2f m. Slew@: %.3f'%(aplen/60.,aprogram.slewAt))
+            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(aplen/60.,aprogram.slewAt))
             #return program
             #if aplen < 0 and program:
             #	log.debug('Using normal program (aplen < 0)...')
@@ -205,11 +212,11 @@ class RobObs(ChimeraObject):
             if waittime < 0:
                 waittime = 0
 
-            self._debuglog.warning('Wait time is: %.2f m'%(waittime/60.))
+            self._debuglog.info('Wait time is: %.2f m'%(waittime/60.))
 
             if waittime>aplen or waittime > 2.*plen:
             #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:
-                self._debuglog.warning('Choose program with priority %i'%p)
+                self._debuglog.info('Choose program with priority %i'%p)
                 # put program back with same priority
                 #self.rq.put((prt,program))
                 # return alternate program
@@ -229,7 +236,7 @@ class RobObs(ChimeraObject):
             # [TO-CHECK] try again.
             return None
 
-        self._debuglog.warning('Choose program with priority %i'%priority)
+        self._debuglog.info('Choose program with priority %i'%priority)
         return program
 
     def getProgram(self, nowmjd, priority):
@@ -291,7 +298,7 @@ class RobObs(ChimeraObject):
 
     def getPList(self):
 
-        session = Session()
+        session = RSession()
         plist = [p[0] for p in session.query(Program.priority).distinct().order_by(Program.priority)]
         session.commit()
 
@@ -359,7 +366,7 @@ class RobObs(ChimeraObject):
             self._debuglog.debug('\tMoon distance:%.3f'%moonDist)
         # 4) check seeing
 
-        if self["seeingmonitos"] is not None:
+        if self["seeingmonitors"] is not None:
 
             seeing = self.getSM().seeing()
 

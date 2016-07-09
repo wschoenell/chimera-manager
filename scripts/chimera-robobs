@@ -33,7 +33,7 @@ from chimera_manager.controllers.status import InstrumentOperationFlag
 from chimera_manager.controllers.scheduler.model import Session as RSession
 from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, ObsBlock,
                                                          BlockConfig, Targets, ObservingLog,
-                                                         Program)
+                                                         Program, AutoFocus, Point, Expose)
 from chimera_manager.controllers.scheduler import algorithms
 ################################################################################
 
@@ -902,10 +902,11 @@ class RobObs(ChimeraCLI):
                         program.actions.append(Point(targetRaDec=position))
                     else:
                         program.actions.append(Point(targetName=objname))
+                    # Todo: Add AutoFocus
                 elif imgtype == "FLAT":
                     site = self._remoteManager.getProxy("/Site/0")
                     flatPosition = Position.fromAltAz(site['flat_alt'], site['flat_az'])
-                    program.actions.append(t80db.Point(targetAltAz=flatPosition))
+                    program.actions.append(Point(targetAltAz=flatPosition))
                 else:
                     self.out(blue('+')+'No target to point at...')
 
@@ -926,7 +927,7 @@ class RobObs(ChimeraCLI):
             if imgtype in ("BIAS", "DARK"):
                 filter = None
 
-            program.actions.append(t80db.Expose(shutter=shutter,
+            program.actions.append(Expose(shutter=shutter,
                                           filename="%s-%s-$DATE-$TIME" % (subblock[0].pid,objname.replace(" ", "")),
                                           filter=filter,
                                           frames=frames,
