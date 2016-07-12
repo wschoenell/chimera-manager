@@ -168,9 +168,9 @@ class Program(Base):
         cp.slewAt   = self.slewAt
         cp.exposeAt = self.exposeAt
 
-        for act in self.actions:
-            chim_act = act.chimeraAction()
-            self.actions.append(act)
+        # for act in self.actions:
+        #     chim_act = act.chimeraAction()
+        #     self.actions.append(act)
 
         return cp
 
@@ -216,6 +216,7 @@ class AutoFocus(Action):
     def __str__ (self):
         return "autofocus: start=%d end=%d step=%d exptime=%d" % (self.start, self.end, self.step, self.exptime)
 
+    @staticmethod
     def chimeraAction(self):
 
         chim_act = CAutoFocus()
@@ -237,6 +238,7 @@ class AutoFlat(Action):
     filter  = Column(String, default=None)
     frames     = Column(Integer, default=1)
 
+    @staticmethod
     def chimeraAction(self):
 
         ca = CAutoFlat()
@@ -259,6 +261,7 @@ class PointVerify(Action):
         elif self.here is True:
             return "pointing verification: current field"
 
+    @staticmethod
     def chimeraAction(self):
 
         ca = CPointVerify()
@@ -277,14 +280,7 @@ class Point(Action):
     targetAltAz = Column(PickleType, default=None)
     targetName  = Column(String, default=None)
 
-    def __str__ (self):
-        if self.targetRaDec is not None:
-            return "point: (ra,dec) %s" % self.targetRaDec
-        elif self.targetAltAz is not None:
-            return "point: (alt,az) %s" % self.targetAltAz
-        elif self.targetName is not None:
-            return "point: (object) %s" % self.targetName
-
+    @staticmethod
     def chimeraAction(self):
         ca = CPoint()
 
@@ -296,6 +292,15 @@ class Point(Action):
             ca.targetName = self.targetName
 
         return ca
+
+    def __str__ (self):
+        if self.targetRaDec is not None:
+            return "point: (ra,dec) %s" % self.targetRaDec
+        elif self.targetAltAz is not None:
+            return "point: (alt,az) %s" % self.targetAltAz
+        elif self.targetName is not None:
+            return "point: (object) %s" % self.targetName
+
 
 class Expose(Action):
     __tablename__ = "action_expose"
@@ -319,6 +324,7 @@ class Expose(Action):
     def __str__ (self):
         return "expose: exptime=%d frames=%d type=%s" % (self.exptime, self.frames, self.imageType)
 
+    @staticmethod
     def chimeraAction(self):
         ca = CExpose()
 

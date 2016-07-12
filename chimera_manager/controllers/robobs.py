@@ -1,8 +1,9 @@
-import os
+import sys,os
 import logging
 import shutil
 import time
 import numpy as np
+import threading
 
 from chimera_manager.controllers.scheduler.model import Session as RSession
 from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, AutoFocus, Point, Expose)
@@ -31,6 +32,8 @@ class RobObs(ChimeraObject):
     def __init__(self):
         ChimeraObject.__init__(self)
         self.rob_state = RobState.OFF
+        self._current_program = None
+        self._current_program_condition = threading.Condition()
 
     def __start__(self):
 
@@ -80,6 +83,7 @@ class RobObs(ChimeraObject):
         sched = self.getSched()
         if not sched:
             self.log.warning("Couldn't find scheduler.")
+            self._debuglog.warning("Couldn't find scheduler.")
             return False
 
         sched.programBegin += self.getProxy()._watchProgramBegin
@@ -93,6 +97,7 @@ class RobObs(ChimeraObject):
         sched = self.getSched()
         if not sched:
             self.log.warning("Couldn't find scheduler.")
+            self._debuglog.warning("Couldn't find scheduler.")
             return False
 
         sched.programBegin -= self.getProxy()._watchProgramBegin
@@ -107,16 +112,27 @@ class RobObs(ChimeraObject):
         self._debuglog.debug('Program %s started' % program)
 
     def _watchProgramComplete(self, program, status, message=None):
+        self._current_program_condition.acquire()
+
         session = model.Session()
         program = session.merge(program)
         self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
                                                                     status,
                                                                     message))
+        # if status == SchedulerStatus.OK and self._current_program is not None:
+        #     rsession = RSession()
+        #     cp = rsession.merge(self._current_program)
+        #     cp.finished = True
+        #     rsession.commit()
+        #     # Todo: Must also update on robos database
+        #     self._current_program = None
+        #
+        # self._current_program_condition.notifyAll()
 
     def _watchActionBegin(self,action, message):
         session = model.Session()
         action = session.merge(action)
-        self._debuglog.debug("%s:%s %s ..." % (blue("[action] "), action,message), end="")
+        self._debuglog.debug("%s %s ..." % (action,message))
 
 
     def _watchActionComplete(self,action, status, message=None):
@@ -125,10 +141,10 @@ class RobObs(ChimeraObject):
 
         if status == SchedulerStatus.OK:
             self._debuglog.debug("%s: %s" % (action,
-                                            green(str(status))))
+                                            str(status)))
         else:
             self._debuglog.debug("%s: %s (%s)" % (action,
-                                     red(str(status)), red(str(message))))
+                                     str(status), str(message)))
 
     def _watchStateChanged(self, newState, oldState):
 
@@ -140,14 +156,30 @@ class RobObs(ChimeraObject):
         if oldState == SchedState.IDLE and newState == SchedState.OFF:
             if self.rob_state == RobState.ON:
                 self._debuglog.debug("Scheduler went from BUSY to OFF. Needs resheduling...")
+
+                # if self._current_program is not None:
+                #     self._debuglog.warning("Wait for last program to be updated")
+                #     self._current_program_condition.acquire()
+                #     self._current_program_condition.wait(10) # wait 10s most!
+
                 program = self.reshedule()
                 program = session.merge(program)
 
                 if program is not None:
                     self._debuglog.debug("Adding program %s to sheduler and starting." % program)
                     cprogram = program.chimeraProgram()
+                    for act in program.actions:
+                        cact = getattr(sys.modules[__name__],act.action_type).chimeraAction(act)
+                        cprogram.actions.append(cact)
                     csession.add(cprogram)
                     csession.commit()
+                    program.finished = True
+                    session.commit()
+                    # sched = self.getSched()
+                    # self._current_program = cprogram
+                    # sched.start()
+                    # self._current_program_condition.release()
+                    self._debuglog.debug("Done")
                 else:
                     self._debuglog.debug("No program on robobs queue.")
             else:

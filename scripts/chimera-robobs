@@ -27,9 +27,6 @@ from chimera.util.position import Position
 
 
 from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE, DEFAULT_ROBOBS_DATABASE
-from chimera_manager.controllers.model import Session
-from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
-from chimera_manager.controllers.status import InstrumentOperationFlag
 from chimera_manager.controllers.scheduler.model import Session as RSession
 from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, ObsBlock,
                                                          BlockConfig, Targets, ObservingLog,
