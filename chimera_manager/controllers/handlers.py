@@ -57,15 +57,15 @@ class TimeHandler(CheckHandler):
         if abs(check.mode) == 1 or check.mode == 0:
             reftime = sunset
         elif abs(check.mode) == 2:
-            reftime = site.sunset_twilight_begin()
+            reftime = site.sunset_twilight_begin(ut.date())
         elif abs(check.mode) == 3:
-            reftime = site.sunset_twilight_end()
+            reftime = site.sunset_twilight_end(ut.date())
         elif abs(check.mode) == 4:
             reftime = sunrise
         elif abs(check.mode) == 5:
-            reftime = site.sunrise_twilight_begin()
+            reftime = site.sunrise_twilight_begin(sunset)
         elif abs(check.mode) == 6:
-            reftime = site.sunrise_twilight_end()
+            reftime = site.sunrise_twilight_end(sunset)
         else:
             reftime = check.time
 
