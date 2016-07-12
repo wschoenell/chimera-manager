@@ -51,14 +51,17 @@ class TimeHandler(CheckHandler):
 
         ut = site.ut()
         reftime = None
+        sunset = site.sunset(ut.date())
+        sunrise = site.sunrise(sunset)
+
         if abs(check.mode) == 1 or check.mode == 0:
-            reftime = site.sunset()
+            reftime = sunset
         elif abs(check.mode) == 2:
             reftime = site.sunset_twilight_begin()
         elif abs(check.mode) == 3:
             reftime = site.sunset_twilight_end()
         elif abs(check.mode) == 4:
-            reftime = site.sunrise()
+            reftime = sunrise
         elif abs(check.mode) == 5:
             reftime = site.sunrise_twilight_begin()
         elif abs(check.mode) == 6:
@@ -70,14 +73,14 @@ class TimeHandler(CheckHandler):
             return False,"Could not determined reference time."
         elif check.mode >= 0:
             reftime += check.deltaTime
-            ret = ut.time() > reftime.time()
+            ret = ut > reftime
             msg = "Reference time (%s) has passed. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) still in the future. Now %s"%(reftime,ut)
             return ret,msg
         else:
             reftime += check.deltaTime
             # ut = site.ut()
-            ret = ut.time() < reftime.time()
+            ret = ut < reftime
             msg = "Reference time (%s) still in the future. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) has passed. Now %s"%(reftime,ut)
             return ret,msg
