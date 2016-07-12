@@ -529,10 +529,13 @@ class InstrumentFlagHandler(CheckHandler):
         manager = InstrumentFlagHandler.manager
         from chimera_manager.controllers.status import InstrumentOperationFlag
 
+        ret = False
+        msg = ''
+
         if check.mode == 0:
             ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
             msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
-        if check.mode == 1:
+        elif check.mode == 1:
             ret = not ret
             msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
         elif check.mode == 2:
@@ -540,6 +543,8 @@ class InstrumentFlagHandler(CheckHandler):
             ret = manager.hasKey(check.instrument, check.flag)
             msg = "%s is locked with key %s. " % (check.instrument, check.flag) if ret \
                 else "%s is not locked with key %s. " % (check.instrument, check.flag)
+        else:
+            msg = "Mode %i not available" % check.mode
 
         return ret, msg
 
