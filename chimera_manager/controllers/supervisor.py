@@ -320,6 +320,14 @@ class Supervisor(ChimeraObject):
         else:
             raise StatusUpdateException("Unable to unlock %s with provided key"%(instrument))
 
+    def hasKey(self,instrument,key):
+
+        if self.getFlag(instrument) != InstrumentOperationFlag.LOCK:
+            self.log.debug("Instrument not locked")
+            return False
+
+        return key in self.checklist.instrumentKey(instrument)
+
     def activate(self,item):
         self.checklist.activate(item)
 
