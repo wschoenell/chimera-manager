@@ -52,7 +52,7 @@ class TimeHandler(CheckHandler):
         ut = site.ut()
         reftime = None
         sunset = site.sunset(ut.date())
-        sunrise = site.sunrise(sunset)
+        sunrise = site.sunrise(ut.date())
 
         if abs(check.mode) == 1 or check.mode == 0:
             reftime = sunset
