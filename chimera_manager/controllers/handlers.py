@@ -539,7 +539,7 @@ class InstrumentFlagHandler(CheckHandler):
             ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
             msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
         elif check.mode == 1:
-            ret = not ret
+            ret = not manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
             msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
         elif check.mode == 2:
             # Check if instrument is locked with specified key
