@@ -1,5 +1,6 @@
 
 import os
+import shutil
 
 from chimera_manager.controllers.machine import Machine
 from chimera_manager.controllers.checklist import CheckList
@@ -131,6 +132,12 @@ class Supervisor(ChimeraObject):
         if not self.machine.isAlive():
             self.machine.start()
 
+        # every day backup supervisor log file and start over
+        timestr = time.strftime("%Y%m%d")
+        if timestr != self._loggertime:
+            self._openLogger()
+
+
         # Todo: after starting the checker machine, do some basic check of operational status.
 
         return True
@@ -172,11 +179,19 @@ class Supervisor(ChimeraObject):
 
     def _openLogger(self):
 
+        self._loggertime = time.strftime("%Y%m%d")
+
         if self._log_handler:
             self._closeLogger()
 
-        self._log_handler = logging.FileHandler(os.path.join(SYSTEM_CONFIG_DIRECTORY,
-                                                             "supervisor.log"))
+        logfile = os.path.join(SYSTEM_CONFIG_DIRECTORY,
+                               "supervisor.log")
+
+        if os.path.exists(logfile):
+            shutil.move(logfile, os.path.join(SYSTEM_CONFIG_DIRECTORY,
+                                              "supervisor_%s.log"%time.strftime("%Y%m%d-%H%M%S")))
+
+        self._log_handler = logging.FileHandler(logfile)
 
         # self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s.%(msecs)d %(origin)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s'))
         self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s[%(levelname)8s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s'))
