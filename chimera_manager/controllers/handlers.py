@@ -51,18 +51,21 @@ class TimeHandler(CheckHandler):
 
         ut = site.ut()
         reftime = None
+        sunset = site.sunset(ut.date())
+        sunrise = site.sunrise(ut.date())
+
         if abs(check.mode) == 1 or check.mode == 0:
-            reftime = site.sunset()
+            reftime = sunset
         elif abs(check.mode) == 2:
-            reftime = site.sunset_twilight_begin()
+            reftime = site.sunset_twilight_begin(ut.date())
         elif abs(check.mode) == 3:
-            reftime = site.sunset_twilight_end()
+            reftime = site.sunset_twilight_end(ut.date())
         elif abs(check.mode) == 4:
-            reftime = site.sunrise()
+            reftime = sunrise
         elif abs(check.mode) == 5:
-            reftime = site.sunrise_twilight_begin()
+            reftime = site.sunrise_twilight_begin(ut.date())
         elif abs(check.mode) == 6:
-            reftime = site.sunrise_twilight_end()
+            reftime = site.sunrise_twilight_end(ut.date())
         else:
             reftime = check.time
 
@@ -70,14 +73,14 @@ class TimeHandler(CheckHandler):
             return False,"Could not determined reference time."
         elif check.mode >= 0:
             reftime += check.deltaTime
-            ret = ut.time() > reftime.time()
+            ret = ut > reftime
             msg = "Reference time (%s) has passed. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) still in the future. Now %s"%(reftime,ut)
             return ret,msg
         else:
             reftime += check.deltaTime
             # ut = site.ut()
-            ret = ut.time() < reftime.time()
+            ret = ut < reftime
             msg = "Reference time (%s) still in the future. Now %s"%(reftime,ut) if ret else \
                 "Reference time (%s) has passed. Now %s"%(reftime,ut)
             return ret,msg
@@ -529,12 +532,27 @@ class InstrumentFlagHandler(CheckHandler):
         manager = InstrumentFlagHandler.manager
         from chimera_manager.controllers.status import InstrumentOperationFlag
 
-        ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
+        ret = False
+        msg = ''
 
-        if check.mode == 1:
-            ret = not ret
-
-        msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
+        if check.mode == 0:
+            ret = manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
+            msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
+        elif check.mode == 1:
+            ret = not manager.getFlag(check.instrument) == InstrumentOperationFlag.fromStr(check.flag.upper())
+            msg = "%s: %s flag is %s" % (ret, check.instrument, check.flag.upper())
+        elif check.mode == 2:
+            # Check if instrument is locked with specified key
+            ret = manager.hasKey(check.instrument, check.flag)
+            msg = "%s is locked with key %s. " % (check.instrument, check.flag) if ret \
+                else "%s is not locked with key %s. " % (check.instrument, check.flag)
+        elif check.mode == 3:
+            # Check if instrument is not locked with specified key
+            ret = not manager.hasKey(check.instrument, check.flag)
+            msg = "%s is locked with key %s. " % (check.instrument, check.flag) if ret \
+                else "%s is not locked with key %s. " % (check.instrument, check.flag)
+        else:
+            msg = "Mode %i not available" % check.mode
 
         return ret, msg
 
