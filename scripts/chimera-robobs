@@ -763,6 +763,16 @@ class RobObs(ChimeraCLI):
         return 0
 
     ############################################################################
+    @action(help="Start scheduler", helpGroup="RUN", actionGroup="RUN")
+    def wake(self, options):
+
+        robobs = self.robobs
+
+        robobs.wake()
+
+        return 0
+
+    ############################################################################
 
     @action(help="Stop manager", helpGroup="RUN", actionGroup="RUN")
     def stop(self, options):

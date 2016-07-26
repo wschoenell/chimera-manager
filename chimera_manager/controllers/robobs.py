@@ -7,10 +7,12 @@ import threading
 
 from chimera_manager.controllers.scheduler.model import Session as RSession
 from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, AutoFocus, Point, Expose)
+from chimera_manager.controllers.scheduler.machine import Machine
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.site import datetimeFromJD
+from chimera.core.event import event
 from chimera.controllers.scheduler.states import State as SchedState
 from chimera.controllers.scheduler.status import SchedulerStatus
 from chimera.controllers.scheduler import model
@@ -34,6 +36,8 @@ class RobObs(ChimeraObject):
         self.rob_state = RobState.OFF
         self._current_program = None
         self._current_program_condition = threading.Condition()
+        self._debuglog = None
+        self.machine = None
 
     def __start__(self):
 
@@ -44,10 +48,10 @@ class RobObs(ChimeraObject):
         self._connectSchedulerEvents()
 
         self._debuglog = logging.getLogger('_robobs_debug_')
-        logfile = os.path.join(SYSTEM_CONFIG_DIRECTORY, "robobs_%s.log"%time.strftime("%Y%m%d-%H%M%S"))
-        if os.path.exists(logfile):
-            shutil.move(logfile, os.path.join(SYSTEM_CONFIG_DIRECTORY,
-                                              "robobs.log_%s"%time.strftime("%Y%m%d-%H%M%S")))
+        logfile = os.path.join(SYSTEM_CONFIG_DIRECTORY, "robobs_%s.log"%time.strftime("%Y%m%d"))
+        # if os.path.exists(logfile):
+        #     shutil.move(logfile, os.path.join(SYSTEM_CONFIG_DIRECTORY,
+        #                                       "robobs.log_%s"%time.strftime("%Y%m%d-%H%M%S")))
 
         _log_handler = logging.FileHandler(logfile)
         _log_handler.setFormatter(logging.Formatter(
@@ -57,9 +61,13 @@ class RobObs(ChimeraObject):
         self._debuglog.addHandler(_log_handler)
         self.log.setLevel(logging.INFO)
 
-    def __stop__(self):
+        self.machine = Machine(self)
+        self.machine.start()
 
+    def __stop__(self):
         self._disconnectSchedulerEvents()
+        self._debuglog.debug("Shuting down machine...")
+        self.machine.state(SchedState.SHUTDOWN)
 
     def start(self):
         self._debuglog.debug("Switching robstate on...")
@@ -73,10 +81,18 @@ class RobObs(ChimeraObject):
 
         return True
 
+    def wake(self):
+        self._debuglog.debug("Waking machine up...")
+        self.machine.state(SchedState.START)
+
     def getSite(self):
         return self.getManager().getProxy(self["site"])
 
     def getSched(self,index=0):
+        self.log.debug("%s" % self._scheduler_list[index])
+        if self._debuglog is not None:
+            self._debuglog.debug("%s" % self._scheduler_list[index])
+        # return None
         return self.getManager().getProxy(self._scheduler_list[index])
 
     def _connectSchedulerEvents(self):
@@ -112,22 +128,24 @@ class RobObs(ChimeraObject):
         self._debuglog.debug('Program %s started' % program)
 
     def _watchProgramComplete(self, program, status, message=None):
-        self._current_program_condition.acquire()
 
         session = model.Session()
         program = session.merge(program)
         self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
                                                                     status,
                                                                     message))
-        # if status == SchedulerStatus.OK and self._current_program is not None:
-        #     rsession = RSession()
-        #     cp = rsession.merge(self._current_program)
-        #     cp.finished = True
-        #     rsession.commit()
-        #     # Todo: Must also update on robos database
-        #     self._current_program = None
-        #
+        if status == SchedulerStatus.OK and self._current_program is not None:
+            rsession = RSession()
+            cp = rsession.merge(self._current_program)
+            cp.finished = True
+            rsession.commit()
+            self._current_program = None
+        # self._current_program_condition.acquire()
+        # for i in range(10):
+        #     self._debuglog.debug('Sleeping %2i ...' % i)
+        #     time.sleep(1)
         # self._current_program_condition.notifyAll()
+        # self._current_program_condition.release()
 
     def _watchActionBegin(self,action, message):
         session = model.Session()
@@ -150,9 +168,6 @@ class RobObs(ChimeraObject):
 
         self._debuglog.debug("State changed %s -> %s..." % (oldState,
                                                             newState))
-        session = RSession()
-        csession = model.Session()
-
         if oldState == SchedState.IDLE and newState == SchedState.OFF:
             if self.rob_state == RobState.ON:
                 self._debuglog.debug("Scheduler went from BUSY to OFF. Needs resheduling...")
@@ -160,28 +175,59 @@ class RobObs(ChimeraObject):
                 # if self._current_program is not None:
                 #     self._debuglog.warning("Wait for last program to be updated")
                 #     self._current_program_condition.acquire()
-                #     self._current_program_condition.wait(10) # wait 10s most!
+                #     self._current_program_condition.wait(30) # wait 10s most!
+                #     self._current_program_condition.release()
+                session = RSession()
+                csession = model.Session()
 
+                # cprog = model.Program(  name =  "CALIB",
+                #                         pi = "Tiago Ribeiro",
+                #                         priority = 1 )
+                # cprog.actions.append(model.Expose(frames = 3,
+                #                                   exptime = 10,
+                #                                   imageType = "DARK",
+                #                                   shutter = "CLOSE",
+                #                                   filename = "dark-$DATE-$TIME"))
+                # cprog.actions.append(model.Expose(frames = 1,
+                #                                   exptime = 0,
+                #                                   imageType = "DARK",
+                #                                   shutter = "CLOSE",
+                #                                   filename = "bias-$DATE-$TIME"))
+                #
+                # csession.add(cprog)
+                # self._current_program = cprog
+                # self._debuglog.debug("Added: %s" % cprog)
                 program = self.reshedule()
                 program = session.merge(program)
-
+                #
                 if program is not None:
                     self._debuglog.debug("Adding program %s to sheduler and starting." % program)
                     cprogram = program.chimeraProgram()
                     for act in program.actions:
                         cact = getattr(sys.modules[__name__],act.action_type).chimeraAction(act)
                         cprogram.actions.append(cact)
+                    cprogram = csession.merge(cprogram)
                     csession.add(cprogram)
                     csession.commit()
                     program.finished = True
                     session.commit()
                     # sched = self.getSched()
-                    # self._current_program = cprogram
+                    self._current_program = program
                     # sched.start()
                     # self._current_program_condition.release()
                     self._debuglog.debug("Done")
                 else:
                     self._debuglog.debug("No program on robobs queue.")
+
+                csession.commit()
+                session.commit()
+                # for i in range(10):
+                #     self.log.debug('Waiting %i/10' % i)
+                #     time.sleep(1.0)
+                # sched = self.getSched()
+                # sched.start()
+                self.wake()
+                self._debuglog.debug("Done")
             else:
                 self._debuglog.debug("Current state is off. Won't respond.")
 
@@ -420,3 +466,6 @@ class RobObs(ChimeraObject):
         self._debuglog.debug('Target OK!')
 
         return True
+
+    def getLogger(self):
+        return self._debuglog
