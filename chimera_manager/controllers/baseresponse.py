@@ -161,18 +161,22 @@ class DomeAction(BaseResponse):
         for dome in DomeAction.dome:
             if check.mode == 0:
                 # Open Dome Slit
+                manager.broadCast("Opening dome slit...")
                 openFunc(dome.isSlitOpen,dome.openSlit)
             elif check.mode == 1:
                 # Close dome Slit
+                manager.broadCast("Closing dome slit...")
                 closeFunc(dome.isSlitOpen,dome.closeSlit)
             elif check.mode == 2:
                 # Open dome flap
+                manager.broadCast("Opening dome flap...")
                 openFunc(dome.isFlapOpen, dome.openFlap)
             elif check.mode == 3:
                 # Close dome flap
                 # Dome may still be operating with Flap closed. Will close without any flag changes
                 if dome.isFlapOpen():
                     try:
+                        manager.broadCast("Closing dome flap...")
                         dome.closeFlap()
                     except Exception, e:
                         manager.broadCast(e)
@@ -257,12 +261,14 @@ class TelescopeAction(BaseResponse):
         for tel in TelescopeAction.telescope:
             if check.mode == 0:
                 try:
+                    manager.broadCast("Unparking telescope...")
                     tel.unpark()
                 except Exception, e:
                     manager.broadCast(e)
                     raise
             elif check.mode == 1:
                 try:
+                    manager.broadCast("Parking telescope...")
                     tel.park()
                 except Exception, e:
                     manager.broadCast(e)
@@ -280,10 +286,26 @@ class TelescopeAction(BaseResponse):
                     raise TelescopeActionException("Cannot open telescope cover due to manager constraints.")
             elif check.mode == 3:
                 try:
+                    manager.broadCast("Closing telescope cover...")
                     tel.closeCover()
                 except Exception, e:
                     manager.broadCast(e)
                     raise
+            elif check.mode == 5:
+                from chimera.util.position import Position
+                alt,az = str(check).parameter.split(",")
+                target = Position.fromAltAz(alt, az)
+                manager.broadCast("Slewing telescope to alt/az %s" % target)
+                tel.slewToAltAz(target)
+            elif check.mode == 6:
+                from chimera.util.position import Position
+                ra,dec = check.parameter.split(",")
+                target = Position.fromRaDec(ra, dec)
+                manager.broadCast("Slewing telescope to ra/dec %s" % target)
+                tel.slewToAltAz(target)
+            elif check.mode == 7:
+                manager.broadCast("Stopping telescope tracking")
+                tel.stopTracking()
             else:
                 manager.broadCast("Not implemented mode %i for telescope" % (check.mode))
                 raise TelescopeActionException("Not implemented mode %i for telescope" % (check.mode))
@@ -389,10 +411,18 @@ class ExecuteScript(BaseResponse):
 
     @staticmethod
     def process(check):
-        if os.path.exists(check.script):
-            ret = subprocess.call([check.script])
+        manager = BaseResponse.manager
+        if os.path.exists(str(check.filename)):
+            manager.broadCast("Running %s " % check.filename)
+            ret = subprocess.call(str(check.filename),shell=True)
             # Todo: Check return value and log if different than 0 (execution error)
+        else:
+            manager.broadCast("Could not find script %s to run... " % check.filename)
         # Todo: Log if there is a problem
+
+    @staticmethod
+    def model():
+        return model.ExecuteScript
 
 class SendTelegram(BaseResponse):
 
