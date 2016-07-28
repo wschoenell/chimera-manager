@@ -227,13 +227,24 @@ class Supervisor(ChimeraObject):
             for update in updates:
                 update_id = updates[-1].update_id + 1
 
+            keyboard = [[telegram.InlineKeyboardButton("Yes", callback_data='OK'),
+                         telegram.InlineKeyboardButton("No", callback_data='NO'),
+                         telegram.InlineKeyboardButton("Lock dome!", callback_data='lock')]]
+
+            reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+
+            # bot.sendMessage(update.message.chat_id, text="Please choose:", reply_markup=reply_markup)
+
             self.log.debug('Asking lister %s.' % question)
 
+            msg_ids = []
             for id in self._listen_ids:
-                self.bot.sendMessage(chat_id=id,
+                msg_ids.append(self.bot.sendMessage(chat_id=id,
                                      text='[waittime: %i s] %s' %
                                           (waittime,
-                                           question))
+                                           question),
+                                     reply_markup=reply_markup
+                                     ))
 
             start_time = time.time()
             while time.time() - start_time < waittime:
@@ -241,14 +252,43 @@ class Supervisor(ChimeraObject):
                 updates = self.bot.getUpdates(offset = update_id)
 
                 for update in updates:
+                    try:
+                        query = update.callback_query
+                        dd = update.to_dict()
+                        # print dd
+                        # self.bot.editMessageText(text="Selected option: %s by %s" % (query.data,
+                        #                                                              dd['callback_query']['message']['chat']['username']),
+                        #                          chat_id=query.message.chat_id,
+                        #                          message_id=query.message.message_id)
 
-                    if update.message.chat_id in self._listen_ids:
-                        answer = update.message.text
-                        if answer is not None:
-                            return answer
-                        update_id = update.update_id+1
+                        if query.message.chat_id in self._listen_ids:
+                            for msg in msg_ids:
+                                self.bot.editMessageText(text="Selected option: %s by %s" % (query.data,
+                                                    dd['callback_query']['message']['chat']['username']),
+                                                    chat_id=msg.chat_id,
+                                                    message_id=msg.message_id)
+                            answer = query.data
+                            if answer is not None:
+                                return answer
+                            else:
+                                return 'No'
+                        # else:
+                        #     for msg in msg_ids:
+                        #         self.bot.editMessageText(text="Selected option: %s by %s" % (query.data,
+                        #                             dd['callback_query']['message']['chat']['username']),
+                        #                             chat_id=msg.message.chat_id,
+                        #                             message_id=msg.message.message_id)
+                    except Exception,e:
+                        self.log.exception(e)
+                    update_id = update.update_id+1
 
-            return None
+
+            for ids in msg_ids:
+                self.bot.editMessageText(text="%s (Timed out)" % ids.text,
+                                         chat_id=ids.chat_id,
+                                         message_id=ids.message_id)
+
+            return 'No'
 
     def site(self):
         return self.getManager().getProxy('/Site/0')
