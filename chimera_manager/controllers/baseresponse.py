@@ -191,7 +191,13 @@ class DomeAction(BaseResponse):
             elif check.mode == 5:
                 # switch fan on
                 try:
-                    domefan = dome.getManager().getProxy(str(check.parameter))
+                    if ',' in str(check.parameter):
+                        fan,speed = str(check.parameter).split(',')
+                    else:
+                        fan = str(check.parameter)
+                        speed = None
+
+                    domefan = dome.getManager().getProxy(fan)
 
                     if domefan.isSwitchedOn():
                         manager.broadCast("Fan is already running... ")
@@ -199,13 +205,24 @@ class DomeAction(BaseResponse):
                         manager.broadCast("Dome fan started")
                     else:
                         manager.broadCast("Could not start dome fan")
+
+                    if speed is not None:
+                        try:
+                            manager.broadCast("Setting fan speed to %s" % speed)
+                            domefan.setRotation(float(speed))
+                        except Exception, e:
+                            manager.broadCast("Could not set dome speed to %s" % speed)
+
                 except Exception, e:
                     manager.broadCast("Could not start dome fan. %s" % repr(e))
                     raise
+
             elif check.mode == 6:
                 # switch fan off
                 try:
-                    domefan = dome.getManager().getProxy(str(check.parameter))
+                    fan = str(check.parameter)
+
+                    domefan = dome.getManager().getProxy(fan)
 
                     if not domefan.isSwitchedOn():
                         manager.broadCast("Fan is already off... ")
