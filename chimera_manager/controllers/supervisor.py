@@ -19,6 +19,7 @@ from chimera.controllers.scheduler.status import SchedulerStatus as SchedStatus
 import threading
 import telnetlib
 import telegram
+import telegram.ext
 import logging
 import time
 from collections import OrderedDict
@@ -170,12 +171,124 @@ class Supervisor(ChimeraObject):
 
         if self["telegram-token"] is not None:
             self.bot = telegram.Bot(token=self["telegram-token"])
+            self.updater = telegram.ext.Updater(bot=self.bot)
+
+            # self.updater.dispatcher.addHandler(CommandHandler('start', start))
+            # self.updater.dispatcher.addHandler(CallbackQueryHandler(button))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('list', self.telegramList))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('run', self.telegramRun))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('info', self.telegramInfo))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('lock', self.telegramLock))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('unlock', self.telegramUnLock))
+            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('help', self.telegramHelp))
+            # self.updater.dispatcher.addErrorHandler(error)
+
+            # def start_telegram_polling():
+            #     self.updater.start_polling()
+            #
+            #     # Run the bot until the user presses Ctrl-C or the process receives SIGINT,
+            #     # SIGTERM or SIGABRT
+            #     # self.updater.idle()
+            #
+            # self._telegramPollingThread = threading.Thread(target=start_telegram_polling)
+            # self._telegramPollingThread.setDaemon(True)
+            # self._telegramPollingThread.start()
+            self.updater.start_polling()
 
     def disconnectTelegram(self):
-        pass
+        self.updater.stop()
+
+    def telegramList(self, bot, update):
+        # bot.sendMessage(update.message.chat_id, text="Retrieving action list.")
+        items = self.checklist.getInactive()
+        if len(items) == 0:
+            bot.sendMessage(update.message.chat_id, text="No action available")
+            return
+
+        msg = 'The following items can be run remotely:\n'
+        for item in items:
+            msg += '- %s\n' % item
+        bot.sendMessage(update.message.chat_id, text=msg)
+
+    def telegramRun(self, bot, update):
+        # bot.sendMessage(update.message.chat_id, text="Running action \"%s\"." % update.message.text)
+        items = self.checklist.getInactive()
+        action = str(update.message.text).split(" ")[1]
+        if action in items:
+            bot.sendMessage(update.message.chat_id, text="Running action \"%s\"." % action)
+            self.machine.runAction(action)
+        else:
+            bot.sendMessage(update.message.chat_id, text="Action \"%s\" not available." % action)
+
+    def telegramInfo(self, bot, update):
+        # bot.sendMessage(update.message.chat_id, text="Retrieving manager info.")
+        msg = "General status:\n"
+
+        for inst_ in self.getInstrumentList():
+            flag = self.getFlag(inst_)
+            key = ""
+            if self.getFlag(inst_) == InstrumentOperationFlag.LOCK:
+                key = ' %s' % self.getInstrumentKey(inst_)
+
+            msg += "- %s: %s %s\n"%(inst_,
+                                    flag,
+                                    key)
+        bot.sendMessage(update.message.chat_id, text=msg)
+
+    def telegramLock(self, bot, update):
+        try:
+            instrument, key = str(update.message.text).split(" ")[1:3]
+        except:
+            bot.sendMessage(update.message.chat_id, text="Could not parse input string \"%s\"." % update.message.text)
+            return
+
+        try:
+            self.lockInstrument(instrument,key)
+        except:
+            bot.sendMessage(update.message.chat_id, text="Could not lock %s with key %s." % (instrument,
+                                                                                             key))
+        else:
+            bot.sendMessage(update.message.chat_id, text="%s locked with key %s." % (instrument,
+                                                                                             key))
+
+    def telegramUnLock(self, bot, update):
+        try:
+            instrument, key = str(update.message.text).split(" ")[1:3]
+        except:
+            bot.sendMessage(update.message.chat_id, text="Could not parse input string \"%s\"." % update.message.text)
+            return
+
+        instrument_key_list = self.getInstrumentKey(instrument)
+        if key in instrument_key_list:
+            try:
+                self.unlockInstrument(instrument,key)
+            except:
+                if key not in self.getInstrumentKey(instrument):
+                    bot.sendMessage(update.message.chat_id, text="%s unlocked with key %s." % (instrument,
+                                                                                               key))
+                else:
+                    bot.sendMessage(update.message.chat_id, text="Could not unlock %s with key %s." % (instrument,
+                                                                                                       key))
+            else:
+                    bot.sendMessage(update.message.chat_id, text="%s unlocked with key %s." % (instrument,
+                                                                                               key))
+        else:
+            bot.sendMessage(update.message.chat_id, text="%s not locked with key %s." % (instrument,
+                                                                           key))
+
+    def telegramHelp(self, bot, update):
+        helpMSG = '''Commands:
+/list - List current available actions.
+/run [action] - Run specific action from command list.
+/info - Get current manager state.
+/lock [instrument] [key] - lock instrument with specified key
+/unlock [instrument] [key] - unlock instrument with specified key (use with care!)
+/help - Show this help page.
+        '''
+        bot.sendMessage(update.message.chat_id, text=helpMSG)
 
     def isTelegramConnected(self):
-        return self._telegramSocket is not None
+        return self.bot is not None
 
     def _openLogger(self):
 
@@ -254,6 +367,8 @@ class Supervisor(ChimeraObject):
                 for update in updates:
                     try:
                         query = update.callback_query
+                        if query is None:
+                            continue
                         dd = update.to_dict()
                         # print dd
                         # self.bot.editMessageText(text="Selected option: %s by %s" % (query.data,
@@ -263,7 +378,9 @@ class Supervisor(ChimeraObject):
 
                         if query.message.chat_id in self._listen_ids:
                             for msg in msg_ids:
-                                self.bot.editMessageText(text="Selected option: %s by %s" % (query.data,
+                                self.bot.editMessageText(text="%s \n Selected option: %s by %s" % (
+                                    dd['callback_query']['message']['text'],
+                                                    query.data,
                                                     dd['callback_query']['message']['chat']['username']),
                                                     chat_id=msg.chat_id,
                                                     message_id=msg.message_id)
