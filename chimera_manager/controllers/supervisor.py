@@ -175,12 +175,12 @@ class Supervisor(ChimeraObject):
 
             # self.updater.dispatcher.addHandler(CommandHandler('start', start))
             # self.updater.dispatcher.addHandler(CallbackQueryHandler(button))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('list', self.telegramList))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('run', self.telegramRun))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('info', self.telegramInfo))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('lock', self.telegramLock))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('unlock', self.telegramUnLock))
-            self.updater.dispatcher.addHandler(telegram.ext.CommandHandler('help', self.telegramHelp))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('list', self.telegramList))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('run', self.telegramRun))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('info', self.telegramInfo))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('lock', self.telegramLock))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('unlock', self.telegramUnLock))
+            self.updater.dispatcher.add_handler(telegram.ext.CommandHandler('help', self.telegramHelp))
             # self.updater.dispatcher.addErrorHandler(error)
 
             # def start_telegram_polling():
