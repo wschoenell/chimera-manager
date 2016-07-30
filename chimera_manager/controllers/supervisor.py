@@ -459,8 +459,10 @@ class Supervisor(ChimeraObject):
                                   (self.getFlag(inst_) == InstrumentOperationFlag.OPERATING) )
             return flag
         else:
-            return (self.getFlag(instrument) == InstrumentOperationFlag.READY) and \
-                   (self.getFlag("site") == InstrumentOperationFlag.READY)
+            return ((self.getFlag(instrument) == InstrumentOperationFlag.READY) or
+                   (self.getFlag(instrument) == InstrumentOperationFlag.OPERATING))and \
+                   ((self.getFlag("site") == InstrumentOperationFlag.READY) or
+                    (self.getFlag("site") == InstrumentOperationFlag.OPERATING))
 
 
     def lockInstrument(self,instrument,key):
