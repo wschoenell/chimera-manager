@@ -280,6 +280,9 @@ class TelescopeAction(BaseResponse):
                 try:
                     manager.broadCast("Unparking telescope...")
                     tel.unpark()
+                    manager.setFlag("telescope",IOFlag.READY)
+                    manager.setFlag("dome",IOFlag.READY)
+
                 except Exception, e:
                     manager.broadCast(e)
                     raise
@@ -287,6 +290,8 @@ class TelescopeAction(BaseResponse):
                 try:
                     manager.broadCast("Parking telescope...")
                     tel.park()
+                    manager.setFlag("telescope",IOFlag.CLOSE)
+                    manager.setFlag("dome",IOFlag.CLOSE)
                 except Exception, e:
                     manager.broadCast(e)
                     raise
