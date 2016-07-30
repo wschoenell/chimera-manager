@@ -291,7 +291,7 @@ class TelescopeAction(BaseResponse):
                     manager.broadCast(e)
                     raise
             elif check.mode == 2:
-                if manager.canOpen():
+                if manager.canOpen("telescope"):
                     try:
                         manager.broadCast("Opening Telescope cover.")
                         tel.openCover()
