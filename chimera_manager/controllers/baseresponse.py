@@ -98,7 +98,7 @@ class DomeAction(BaseResponse):
         # dome = DomeAction.dome[0]
 
         def openFunc(check, open):
-            if manager.canOpen():
+            if manager.canOpen("dome"):
                 # Try to switch dome flag to operating
                 try:
                     manager.setFlag("dome",
