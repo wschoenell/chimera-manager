@@ -471,4 +471,18 @@ class ConfigureScheduler(Response):
     def __str__(self):
         return "[ConfigureScheduler]: %s" % self.filename
 
+class ExecuteScript(Response):
+    __tablename__ = "executescript"
+    __mapper_args__ = {'polymorphic_identity': 'ExecuteScript'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    filename = Column(String)
+
+    def __init__(self,filename=''):
+        self.response_id = self.__tablename__.upper()
+        self.filename = filename
+
+    def __str__(self):
+        return "[ExecuteScript]: %s" % self.filename
+
 metaData.create_all(engine)

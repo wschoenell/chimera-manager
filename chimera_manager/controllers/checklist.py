@@ -310,6 +310,20 @@ class CheckList(object):
 
         session.commit()
 
+    def getInactive(self):
+        session = Session()
+
+        inactivate_items = session.query(List).filter(List.active == False)
+
+        items = []
+        for item in inactivate_items:
+            items.append(str(item.name))
+
+        session.commit()
+
+        return items
+
+
     def _injectInstrument(self, handler):
         if not (issubclass(handler, CheckHandler) or issubclass(handler, baseresponse.BaseResponse)):
             return
