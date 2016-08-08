@@ -231,12 +231,15 @@ class RobObs(ChimeraObject):
             else:
                 self._debuglog.debug("Current state is off. Won't respond.")
 
-    def reshedule(self):
+    def reshedule(self,now=None):
 
         session = RSession()
 
         site = self.getSite()
-        nowmjd = site.MJD()
+        if now is None:
+            nowmjd = site.MJD()
+        else:
+            nowmjd = now
 
         program = None
 
@@ -250,14 +253,22 @@ class RobObs(ChimeraObject):
         priority = plist[0]
         program,plen = self.getProgram(nowmjd,plist[0])
 
-        if program:
-            program = session.merge(program)
+        waittime=0
 
-        if program and ( (not program.slewAt) and (self.checkConditions(program,nowmjd))):
-            # Program should be done right away!
-            return program
-        elif program:
+        if program is not None:
+            program = session.merge(program)
+            if ( (not program.slewAt) and (self.checkConditions(program,nowmjd))):
+                # Program should be done right away!
+                return program
+
             self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program.slewAt))
+
+            waittime=(program.slewAt-nowmjd)*86.4e3
+        else:
+            self._debuglog.warning('No program on %i priority queue.' % plist[0])
+
+        if waittime < 0:
+            waittime = 0
 
         for p in plist[1:]:
 
@@ -285,14 +296,14 @@ class RobObs(ChimeraObject):
 
             # If alternate program fits will send it instead
 
-            waittime=(program.slewAt-nowmjd)*86.4e3
+            awaittime=(program.slewAt-nowmjd)*86.4e3
 
-            if waittime < 0:
-                waittime = 0
+            if awaittime < 0:
+                awaittime = 0
 
             self._debuglog.info('Wait time is: %.2f m'%(waittime/60.))
 
-            if waittime>aplen or waittime > 2.*plen:
+            if awaittime+aplen < waittime+plen:
             #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:
                 self._debuglog.info('Choose program with priority %i'%p)
                 # put program back with same priority
@@ -300,7 +311,8 @@ class RobObs(ChimeraObject):
                 # return alternate program
                 return aprogram
             if not self.checkConditions(program,program.slewAt):
-                program,plen = aprogram,aplen
+                program,plen,waittime = aprogram,aplen,awaittime
+
             #program,plen,priority = aprogram,aplen,p
             #if not program.slewAt :
             #    # Program should be done right now if possible!

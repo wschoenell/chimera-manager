@@ -4,6 +4,7 @@ from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
                         Float, PickleType, MetaData, Text, create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from chimera.controllers.scheduler.model import (Program as CProgram,
                                                  AutoFocus as CAutoFocus,
@@ -37,6 +38,7 @@ class Targets(Base):
     targetRa = Column(Float, default=0.0)
     targetDec = Column(Float, default=0.0)
     targetEpoch = Column(Float, default=2000.)
+    targetAH = Column(Float, default=0.)
     targetMag = Column(Float, default=0.0)
     magFilter = Column(String, default=None)
     link = Column(String, default=None)
@@ -45,14 +47,24 @@ class Targets(Base):
         raDec = Position.fromRaDec(self.targetRa, self.targetDec, 'J2000')
 
         if self.observed:
-            msg = "#[id: %5d] [name: %15s %s] [type: %s] #LastObverved@: %s"
-            return msg % (self.id, self.name, raDec,
+            msg = "#[id: %5d] [name: %15s %s (ah: %.2f)] [type: %s] #LastObverved@: %s"
+            return msg % (self.id, self.name, raDec, self.targetAH,
                           self.type, self.lastObservation)
         else:
-            msg = "#[id: %5d] [name: %15s %s] [type: %s] #NeverObserved"
-            return msg % (self.id, self.name, raDec,
+            msg = "#[id: %5d] [name: %15s %s (ah: %.2f)] [type: %s] #NeverObserved"
+            return msg % (self.id, self.name, raDec, self.targetAH,
                           self.type,)
+    @hybrid_property
+    def lst(self):
+        return self.targetRa + self.targetAH
 
+    @lst.setter
+    def lst(self, lmst):
+        ah = lmst - self.targetRa
+        if ah < 0:
+            ah += 24.
+        self.targetAH = ah
+        # print lmst, self.targetRa, self.targetAH,type(lmst)
 
 class BlockPar(Base):
     __tablename__ = "blockpar"

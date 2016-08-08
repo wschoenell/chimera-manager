@@ -46,6 +46,18 @@ class RobObs(ChimeraCLI):
         '''
 
         self.addHelpGroup("ROBOBS", "RobObs")
+        self.addController(name="site",
+                           cls="Site",
+                           required=True,
+                           help="Observing site",
+                           helpGroup="OBSERVATORY")
+
+        self.addController(name="telescope",
+                           cls="telescope",
+                           required=False,
+                           help="Telescope to me used. It is used during queue processing for estimating slew time.",
+                           helpGroup="TELESCOPE")
+
         self.addController(name="robobs",
                            cls="RobObs",
                            required=True,
@@ -553,6 +565,132 @@ class RobObs(ChimeraCLI):
 
     ############################################################################
 
+    @action(long="showObservingLog",
+            help="Show entries on Observing Log database. User can specify start/end dates, only start or end works as well.",
+            actionGroup="")
+    def showObservingLog(self,opt):
+
+        session = RSession()
+
+        self.mktimes(opt)
+
+        query = session.query(ObservingLog).filter(ObservingLog.time > self.obsStart-dt.timedelta(hours=2),
+                                                   ObservingLog.time <= self.obsEnd).order_by(ObservingLog.time+dt.timedelta(hours=2))
+
+        for q in query:
+            self.out('%s'%q)
+
+    ############################################################################
+
+    @action(long="makeObservingLog",
+            help="Process entries on Observing Log database and generate charts and graphs with observing information. User can specify start/end dates, only start or end works as well.",
+            actionGroup="")
+    def makeObservingLog(self,opt):
+        import matplotlib
+        matplotlib.use('macosx')
+        import pylab as py
+        # import plotly.plotly as py
+        # from plotly.graph_objs import Data,Scatter,Layout,Figure,YAxis,Line
+
+        session = RSession()
+
+        self.mktimes(opt)
+
+        query = session.query(ObservingLog).filter(ObservingLog.time > self.obsStart-dt.timedelta(hours=2),
+                                                   ObservingLog.time <= self.obsEnd+dt.timedelta(hours=2))
+
+        tid = np.array([],dtype=np.int)
+
+        for q in query:
+            tid = np.append(tid,q.tid)
+            #self.out('%s'%q)
+
+        tid = np.unique(tid)
+
+        # site = self.site()
+        trace = []
+
+        color = {0 : 'red',
+                 1 : 'blue'}
+
+        alt_min= 30
+        alt_max= 90
+
+        # print self.obsStart, self.site.LST_inRads(self.obsStart)
+        py.plot([self.obsStart,self.obsStart],
+                [alt_min,alt_max],'r--')
+        py.plot([self.obsEnd,self.obsEnd],
+                [alt_min,alt_max],'r--')
+        py.plot([self.obsStart-dt.timedelta(hours=2),self.obsEnd+dt.timedelta(hours=2)],
+                [alt_min+10,alt_min+10],'r--')
+
+        for id in tid:
+            target = session.query(Targets).filter(Targets.id == id)[0]
+            time,alt = self.altitude(ra = target.targetRa,
+                                     dec = target.targetDec,
+                                     start = self.obsStart-dt.timedelta(hours=5),
+                                     end = self.obsEnd+dt.timedelta(hours=2),
+                                     tdelta=1./30.)
+
+            py.plot(time,alt)
+            # trace.append(Scatter(x = time,
+            #                      y = alt, #np.exp(1.-1./secz)
+            #                      mode='lines',
+            #                      line=Line(
+            #                             color='red',
+            #                             width=0.5
+            #                             )
+            #                      )
+            #              )
+
+            targetObs = query.filter(ObservingLog.tid == id)
+            start = []
+            end = []
+
+            for obs in targetObs:
+                if 'Acquisition Start' in obs.action:
+                    start.append(obs.time)
+                elif 'Acquisition End' in obs.action:
+                    end.append(obs.time)
+            if len(start) != len(end):
+                self.err('Start/end of observations of target does not match')
+                continue
+
+            ylim = py.ylim()
+            for i in range(len(start)):
+                time,alt = self.altitude(ra = target.targetRa,
+                                         dec = target.targetDec,
+                                         start = start[i],
+                                         end = end[i],
+                                         tdelta=1./60.)
+                py.fill_between(time,alt,ylim[0])
+                # trace.append(Scatter(x = time,
+                #                      y = alt, #np.exp(1.-1./secz)
+                #                      mode='lines',
+                #                      line=Line(
+                #                             color=color[int(targetObs[i].priority)],
+                #                             width=1.0
+                #                             ),
+                #                      fill='tozeroy',
+                #                      name=target.name
+                #                      )
+                #              )
+            py.ylim(ylim)
+
+        # print xlim
+        # py.xlim(xlim)
+        py.xlim(self.obsStart-dt.timedelta(hours=2),self.obsEnd+dt.timedelta(hours=2))
+        py.ylim(alt_min,alt_max)
+
+        # py.show()
+        py.savefig('foo.png')
+        # data = Data(trace)
+        # layout = Layout(yaxis=YAxis(autorange='reversed'))
+        # fig = Figure(data=data)#, layout=layout)
+        # plot_url = py.plot(fig, filename='airmass')
+
+    ############################################################################
+
     @action(long="cleanObservingLog",
             help="Delete entries on Observing Log database. If no date is specified swipe clean the log database. User can specify start/end dates, only start or end works as well.",
             actionGroup="")
@@ -563,8 +701,8 @@ class RobObs(ChimeraCLI):
         self.mktimes(opt)
         # Query all obs logs entries
 
-        query = session.query(ObservingLog).filter(ObservingLog.time > self.obsStart,
-                                                   ObservingLog.time <= self.obsEnd)
+        query = session.query(ObservingLog).filter(ObservingLog.time > self.obsStart-dt.timedelta(hours=2),
+                                                   ObservingLog.time <= self.obsEnd+dt.timedelta(hours=2))
 
         for q in query:
             session.delete(q)
@@ -681,6 +819,15 @@ class RobObs(ChimeraCLI):
         ## Select all observing blocks from this project that where not observed
         ## and are not scheduled for observations
 
+        targets = session.query(Targets)
+        for target in targets:
+            target.lst = self.lststart.H
+            # self.out('%s %.2f %.2f' % (target,target.targetRa,target.targetAH))
+        session.commit()
+        # targets = session.query(Targets).order_by(Targets.targetAH)
+        # for target in targets:
+        #     self.out('%s %.2f %.2f' % (target,target.targetRa,target.targetAH))
+
         tList = None
         if lststart < lstend:
             tList = session.query(ObsBlock,BlockPar,Targets,BlockConfig).filter(ObsBlock.pid == FLAG,
@@ -689,7 +836,7 @@ class RobObs(ChimeraCLI):
                                                                                 ObsBlock.scheduled==False,
                                                                                 ObsBlock.observed==False,
                                                                                 Targets.targetRa > lststart,
-                                                                                Targets.targetRa < lstend).join(BlockPar).join(Targets).join(BlockConfig).order_by(ObsBlock.blockid)
+                                                                                Targets.targetRa < lstend).join(BlockPar).join(Targets).join(BlockConfig).order_by(desc(Targets.targetAH))
         else:
 
             tList = session.query(ObsBlock,BlockPar,Targets,BlockConfig).filter(ObsBlock.pid == FLAG,
@@ -700,13 +847,17 @@ class RobObs(ChimeraCLI):
                                                                                 or_(and_(Targets.targetRa > lststart,
                                                                                          Targets.targetRa < 24.),
                                                                                     and_(Targets.targetRa > 0.,
-                                                                                         Targets.targetRa < lstend))).join(Targets).join(BlockConfig).order_by(ObsBlock.blockid)
+                                                                                         Targets.targetRa < lstend))).join(Targets).join(BlockConfig).order_by(desc(Targets.targetAH))
 
 
         if len(tList[:]) == 0:
             self.out(blue('+')+'No targets available from this project this night...')
             session.commit()
             return -1
+        # for item in tList:
+        #     item.hour_angle(lststart)
+        # tList.order_by(Targets.targetHA)
+
         self.out('-Found %i suitable targets...'%(len(tList[:])))
 
         ## Separate observing blocks by scheduling algoriths
@@ -796,6 +947,105 @@ class RobObs(ChimeraCLI):
 
     ############################################################################
 
+    @action(long="processQueue",
+            help="Process queue like chimera will do during an observation.",
+            actionGroup="")
+    def processQueue(self,opt):
+
+        self.mktimes(opt)
+
+        site = self.site
+        telescope = self.telescope
+        obsStart = site.JD(self.obsStart)-2400000.5
+        obsEnd = site.JD(self.obsEnd)-2400000.5
+        lststart = self.lststart
+        lstend = self.lstend
+
+
+        otime = obsStart
+
+        appOpen = 0.
+        idle = 0.
+
+        # qExec = queue.QueueScheduler(site)
+
+        session = RSession()
+        telPos = None #current telescope position
+
+        while otime < obsEnd:
+            #aP,aplen = self.getAlternateProgram(aprograms,time)
+            #if aplen < 0:
+            #    break
+            self.out('Requesting target @ %f'%otime)
+            program = self.robobs.reshedule(otime)
+            if not program:
+                break
+            program = session.merge(program)
+            aplen = self.calcObsTime(program)
+
+            #while 0 <  aplen/86.4e3 < idleTime:
+            msg = ''
+            slewAt = float(program.slewAt)
+            _idle = slewAt - otime
+            if _idle*24.*60.*60. < aplen:
+                slewAt = otime
+                _idle = 0.
+            # print slewAt,otime
+            stime = otime
+            if _idle > 1e-4:
+                msg += '[info: Program slew %.3fm in the future. waiting...]'%( (_idle)*24.*60. )
+                idle += _idle
+                stime+=_idle
+            elif _idle < -1e-4:
+                msg += '[info: Program slew %.3fm in the past. Slewing now...]'%  ( (_idle)*24.*60. )
+
+            _idle = _idle if _idle > 0 else 0.
+            slewtime = 0.
+            target = session.query(Targets).filter(Targets.id == program.tid).first()
+            targetPos = Position.fromRaDec(target.targetRa,target.targetDec)
+            if telPos:
+                adist = telPos.angsep(targetPos)
+                slewtime = np.float(adist.toAS())/60./60./86.4e3 # consider 1 arcmin / second
+            slewtime = slewtime if slewtime > _idle else 0 # if slewtime larger than idle time slewtime will be zero
+            msg += ' | slewtime = %.5fm'%(slewtime*60.*60.)
+            self.out('@ %.5f (%.5f): Acquiring %45s %s'%(otime,slewAt,program,msg))
+            log = ObservingLog(time=datetimeFromJD(stime+2400000.5,),
+                                 tid=program.tid,
+                                 name=program.name,
+                                 priority=program.priority,
+                                 action='Simulation: Acquisition Start')
+            session.add(log)
+            session.commit()
+
+            log = ObservingLog(time=datetimeFromJD(stime+(aplen/86.4e3)+2400000.5,),
+                         tid=program.tid,
+                         name=program.name,
+                         priority=program.priority,
+                         action='Simulation: Acquisition End')
+            session.add(log)
+
+            dt = (aplen/86.4e3) + slewtime + _idle
+            otime+=dt
+
+            appOpen+=aplen
+            program.finished = True
+            telPos = targetPos
+            session.commit()
+
+        aprograms = session.query(Program).filter(Program.finished == True)
+
+        for ap in aprograms:
+            ap.finished = False
+        session.commit()
+
+        self.out('@ %.4f: Idle for %.2fh'%(otime,(obsEnd-otime)*24.))
+        idle += (obsEnd-otime)
+        self.out('@ %.4f: Night end'%obsEnd)
+        self.out('-Total idle time: %.2fh'%(idle*24.))
+        self.out('-Total open shutter time: %.2fh'%(appOpen/60./60.))
+
+    ############################################################################
+
     def mktimes(self,opt):
         # Determining start/end times
 
@@ -823,8 +1073,20 @@ class RobObs(ChimeraCLI):
 
         self.lststart = site.LST(self.obsStart).toH()
         self.lstend = site.LST(self.obsEnd).toH()
+        self.lststart_deg = site.LST(self.obsStart).toD()
+        self.lstend_deg = site.LST(self.obsEnd).toD()
         self.mjdStart = site.MJD(self.obsStart)
         self.mjdEnd =  site.MJD(self.obsEnd)
+
+    ############################################################################
+
+    def calcObsTime(self,program,rot=0.):
+        otime = 0.
+
+        for ii,act in enumerate(program.actions):
+            if ii > 0:
+                otime+=(act.exptime+rot)*act.frames
+        return otime
 
     ############################################################################
 
@@ -949,6 +1211,30 @@ class RobObs(ChimeraCLI):
 
         session.add_all(programs)
         session.commit()
+
+    def altitude(self,ra,dec,start,end,tdelta=0.5,minA=10.):
+
+        site = self.site
+
+        coords = Position.fromRaDec(ra,
+                                 dec)
+
+        timevec = np.array([])
+        amvec = np.array([])
+
+        time = start
+        while time < end:
+        #for time in range(start,end,dt.timedelta(hours=tdelta)):
+            #print type(time)
+            lst = site.LST_inRads(time)
+            alt = float(site.raDecToAltAz(coords,lst).alt)
+            # airmass = 1./np.cos(np.pi/2.-alt*np.pi/180.)
+            if minA < alt <= 90.:
+                timevec = np.append(timevec,time)
+                amvec = np.append(amvec,alt)
+            time += dt.timedelta(hours=tdelta)
+
+        return timevec,amvec
 
 ################################################################################
 

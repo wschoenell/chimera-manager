@@ -286,6 +286,9 @@ Moon alt. = %6.2f. Skipping this slot...'%(itr+1,
             radecArray = np.array([Position.fromRaDec(targets[:][0][2].targetRa,
                                                       targets[:][0][2].targetDec)])
 
+            # sort = np.argsort(targets[:][0][2].targetRa)
+            # radecArray = radecArray[sort]
+
             targetNameArray = np.array([targets[:][0][2].name])
 
             # Creat observation slots.
@@ -345,11 +348,15 @@ Moon alt. = %6.2f. Skipping this slot...'%(itr+1,
             nballoc = 0 # total number of blocks allocated
 
             while nalloc < nstars and nblock < len(radecArray):
+            # while nblock < len(radecArray):
                 # get airmasses
                 olst = np.float(radecArray[nblock].ra)*np.pi/180.*0.999
                 maxAltitude = float(site.raDecToAltAz(radecArray[nblock],
                                                       olst).alt)
                 minAM = 1./np.cos(np.pi/2.-maxAltitude*np.pi/180.)
+
+                log.debug("Altitute max/min: %.2f/%.2f" % (maxAltitude,MINALTITUDE))
+                log.debug("Airmass max/min: %.2f/%.2f" % (maxAirmass[nblock],minAM))
 
                 log.debug('Working on: %s'%targetNameArray[nblock])
 
@@ -369,10 +376,10 @@ Moon alt. = %6.2f. Skipping this slot...'%(itr+1,
                 start = nightstart
                 end = nightend
 
-                if olst > lstmid:
-                    end = midnight+(olst-lstmid)*12./np.pi/24.
-                else:
-                    start = midnight-(lstmid-olst)*12./np.pi/24.
+                # if olst > lstmid:
+                #     end = midnight+(olst-lstmid)*12./np.pi/24.
+                # else:
+                #     start = midnight-(lstmid-olst)*12./np.pi/24.
 
                 # find times where object is at desired airmasses
                 allocateSlot = np.array([],
@@ -382,48 +389,73 @@ Moon alt. = %6.2f. Skipping this slot...'%(itr+1,
                 end = nightend if end > nightend else end
                 log.debug('Trying to allocate %s'%(radecArray[nblock]))
                 nballoc_tmp = nballoc
+                time_grid = np.arange(nightstart,nightend,slotLen/60./60./24.)
+                lst_grid = [site.LST_inRads(datetimeFromJD(tt)) for tt in time_grid]
+                airmass_grid = np.array([Airmass(float(site.raDecToAltAz(radecArray[nblock],
+                                                             lst).alt)) for lst in lst_grid])
+                min_amidx = np.min(airmass_grid)
                 for dam in dairMass:
 
-                    time = (start+end)/2.
-                    am = dam+1.
-                    niter = 0
-                    converged = True
-                    oldam = am
-                    while np.abs(am-dam) > 1e-1:
-                        time = (start+end)/2.
-                        lst_start = site.LST_inRads(datetimeFromJD(start)) # in radians
-                        lst_end = site.LST_inRads(datetimeFromJD(end)) # in radians
-                        lst = site.LST_inRads(datetimeFromJD(time)) # in radians
-                        amStart = Airmass(float(site.raDecToAltAz(radecArray[nblock],
-                                                             lst_start).alt))
-                        amEnd = Airmass(float(site.raDecToAltAz(radecArray[nblock],
-                                     lst_end).alt))
-                        am = Airmass(float(site.raDecToAltAz(radecArray[nblock],
-                                                             lst).alt))
-                        niter += 1
-                        log.debug('%.5f %.3f | %.5f %.3f | %.5f %.3f'%(start,amStart,time,am,end,amEnd))
+                    # Before culmination
 
-                        if amStart > amEnd:
-                            if am > dam:
-                                start = time
-                            else:
-                                end = time
-                        else:
-                            if am > dam:
-                                end = time
-                            else:
-                                start = time
+                    converged = False
+                    dam_grid = np.abs(airmass_grid[:min_amidx]-dam)
+                    mm = dam_grid < maxAirmass[maxAirmass[nblock]]
+                    dam_grid[mm] = np.max(dam_grid)
+                    dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
+                    if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
+                        time = time_grid[dam_pos]
+                        converged = True
+                    else:
+                        dam_pos = np.argmin(np.abs(airmass_grid-dam))
+                        mm = dam_grid < maxAirmass[maxAirmass[nblock]]
+                        dam_grid[mm] = np.max(dam_grid)
+                        if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
+                            time = time_grid[dam_pos]
+                            converged = True
+                    print converged,time
 
-                        if niter > 1000:
-                            log.error('Could not converge on search for airmass...')
-                            converged = False
-                            break
-                        elif abs(oldam-am) < 1e-5:
-                            log.error('Could not converge on search for airmass...')
-                            converged = False
-                            break
 
-                        oldam = am
+                    # time = (start+end)/2.
+                    # am = dam+1.
+                    # niter = 0
+                    # converged = True
+                    # oldam = am
+                    # while np.abs(am-dam) > 1e-1:
+                    #     time = (start+end)/2.
+                    #     lst_start = site.LST_inRads(datetimeFromJD(start)) # in radians
+                    #     lst_end = site.LST_inRads(datetimeFromJD(end)) # in radians
+                    #     lst = site.LST_inRads(datetimeFromJD(time)) # in radians
+                    #     amStart = Airmass(float(site.raDecToAltAz(radecArray[nblock],
+                    #                                          lst_start).alt))
+                    #     amEnd = Airmass(float(site.raDecToAltAz(radecArray[nblock],
+                    #                  lst_end).alt))
+                    #     am = Airmass(float(site.raDecToAltAz(radecArray[nblock],
+                    #                                          lst).alt))
+                    #     niter += 1
+                    #     log.debug('%.5f %.3f | %.5f %.3f | %.5f %.3f'%(start,amStart,time,am,end,amEnd))
+                    #
+                    #     if amStart > amEnd:
+                    #         if am > dam:
+                    #             start = time
+                    #         else:
+                    #             end = time
+                    #     else:
+                    #         if am > dam:
+                    #             end = time
+                    #         else:
+                    #             start = time
+                    #
+                    #     if niter > 1000:
+                    #         log.error('Could not converge on search for airmass...')
+                    #         converged = False
+                    #         break
+                    #     elif abs(oldam-am) < 1e-5:
+                    #         log.error('Could not converge on search for airmass...')
+                    #         converged = False
+                    #         break
+                    #
+                    #     oldam = am
 
                     if not converged:
                         break
@@ -472,7 +504,7 @@ Moon alt. = %6.2f. Skipping this slot...'%(itr+1,
                                 break
 
 
-                        if nightstart < time < nightend:
+                        if nightstart <= time < nightend:
                             allocateSlot = np.append(allocateSlot,
                                                      np.array([(time,
                                                                 time+blockDuration[nblock]/60./60./24.,
