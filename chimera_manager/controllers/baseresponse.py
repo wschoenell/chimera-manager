@@ -261,6 +261,28 @@ class DomeAction(BaseResponse):
                 except Exception, e:
                     manager.broadCast("Could not switch lamp off. %s" % repr(e))
                     raise
+            elif check.mode == 9:
+                # Switch on Dome track
+                from chimera.interfaces.dome import Mode
+
+                manager.broadCast("Activating dome tracking.")
+                try:
+                    dome.track()
+                    if dome.getMode() != Mode.Track:
+                        manager.broadCast("Could not set dome tracking.")
+                except Exception, e:
+                    manager.broadCast("Problem trying to set dome tracking.\n %s" % repr(e))
+            elif check.mode == 10:
+                # Switch of Dome track
+                from chimera.interfaces.dome import Mode
+
+                manager.broadCast("Deactivating dome tracking.")
+                try:
+                    dome.stand()
+                    if dome.getMode() == Mode.Track:
+                        manager.broadCast("Could not set dome stand.")
+                except Exception, e:
+                    manager.broadCast("Problem trying to set dome stand.\n %s" % repr(e))
 
 
     @staticmethod
