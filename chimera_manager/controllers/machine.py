@@ -24,7 +24,7 @@ class Machine(threading.Thread):
 
         self.checklist = checklist
         self.controller = controller
-        self.log = controller.log
+        self.log = controller.debuglog
         
         self.setDaemon(False)
 
