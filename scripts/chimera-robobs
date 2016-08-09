@@ -632,7 +632,7 @@ class RobObs(ChimeraCLI):
                                      end = self.obsEnd+dt.timedelta(hours=2),
                                      tdelta=1./30.)
 
-            py.plot(time,alt)
+            py.plot(time,alt,'b-')
             # trace.append(Scatter(x = time,
             #                      y = alt, #np.exp(1.-1./secz)
             #                      mode='lines',
@@ -981,7 +981,7 @@ class RobObs(ChimeraCLI):
             if not program:
                 break
             program = session.merge(program)
-            aplen = self.calcObsTime(program)
+            aplen = self.calcObsTime(program,20.)
 
             #while 0 <  aplen/86.4e3 < idleTime:
             msg = ''
