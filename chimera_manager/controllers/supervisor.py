@@ -21,6 +21,7 @@ import telnetlib
 import telegram
 import telegram.ext
 import logging
+import logging.handlers
 import time
 from collections import OrderedDict
 
@@ -310,6 +311,21 @@ class Supervisor(ChimeraObject):
         self._log_handler.setFormatter(logging.Formatter(fmt='%(asctime)s[%(levelname)8s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s'))
         self._log_handler.setLevel(logging.DEBUG)
         self.log.addHandler(self._log_handler)
+
+        self.debuglog = logging.getLogger('supervisor-debug')
+
+        fileHandler = logging.handlers.RotatingFileHandler(os.path.join(SYSTEM_CONFIG_DIRECTORY,
+                                              "supervisor-debug.log"),
+                                                               maxBytes=100 *
+                                                               1024 * 1024,
+                                                               backupCount=10)
+
+        # _log_handler = logging.FileHandler(fileHandler)
+        fileHandler.setFormatter(logging.Formatter(fmt='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s'))
+        # _log_handler.setLevel(logging.DEBUG)
+        self.debuglog.addHandler(fileHandler)
+        self.debuglog.setLevel(logging.DEBUG)
+        # self.log.setLevel(logging.INFO)
 
     def _closeLogger(self):
         if self._log_handler:

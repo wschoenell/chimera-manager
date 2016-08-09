@@ -38,7 +38,7 @@ class CheckList(object):
         self.mustStop = threading.Event()
 
         self.controller = controller
-        self.log = controller.log
+        self.log = controller.debuglog
 
         self.checkHandlers = {CheckTime:        TimeHandler,
                               CheckHumidity:    HumidityHandler,
