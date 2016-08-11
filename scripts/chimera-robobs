@@ -663,7 +663,7 @@ class RobObs(ChimeraCLI):
                                          start = start[i],
                                          end = end[i],
                                          tdelta=1./60.)
-                py.fill_between(time,alt,ylim[0])
+                py.fill_between(time,alt,ylim[0],facecolor='green', alpha=0.5)
                 # trace.append(Scatter(x = time,
                 #                      y = alt, #np.exp(1.-1./secz)
                 #                      mode='lines',
