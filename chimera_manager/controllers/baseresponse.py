@@ -91,10 +91,12 @@ class DomeAction(BaseResponse):
     '''
 
     @staticmethod
+    @requires("site")
     @requires("dome")
     def process(check):
 
         manager = DomeAction.manager
+        site = DomeAction.site
         # dome = DomeAction.dome[0]
 
         def openFunc(check, open):
@@ -182,12 +184,27 @@ class DomeAction(BaseResponse):
                         manager.broadCast(e)
                         raise
             elif check.mode == 4:
-                # Move dome to "parameter" angle
+                # Move dome either to some standard position or to "parameter" angle
                 from chimera.util.coord import Coord
-                target = Coord.fromDMS(str(check.parameter)) # If this fail, action won't be completed
-                dome.stand()
-                manager.broadCast("Moving dome to %s ... " % target)
-                dome.slewToAz(target)
+                target = None
+                try:
+                    if str(check.parameter) == 'opose-sun':
+                        sunpos = site[0].sunpos()
+                        sun_long = sunpos.long.D + 180.
+                        if sun_long > 360.:
+                            sun_long = 360.-sun_long
+                        target = Coord.fromD(sun_long)
+                    else:
+                        target = Coord.fromDMS(str(check.parameter)) # If this fail, action won't be completed
+                except Exception, e:
+                    manager.broadCast("Could not convert string %s to coordinate. (%s)" % (check.parameter,
+                                                                                           repr(e)))
+                    return
+                else:
+                    dome.stand()
+                    manager.broadCast("Moving dome to %s ... " % target)
+                    dome.slewToAz(target)
+
             elif check.mode == 5:
                 # switch fan on
                 try:
@@ -350,6 +367,51 @@ class TelescopeAction(BaseResponse):
             elif check.mode == 7:
                 manager.broadCast("Stopping telescope tracking")
                 tel.stopTracking()
+            elif check.mode == 8:
+                # switch fan on
+                try:
+                    if ',' in str(check.parameter):
+                        fan,speed = str(check.parameter).split(',')
+                    else:
+                        fan = str(check.parameter)
+                        speed = None
+
+                    fan = tel.getManager().getProxy(fan)
+
+                    if fan.isSwitchedOn():
+                        manager.broadCast("Fan is already running... ")
+                    elif fan.switchOn():
+                        manager.broadCast("Telescope fan started")
+                    else:
+                        manager.broadCast("Could not start telescope fan")
+
+                    if speed is not None:
+                        try:
+                            manager.broadCast("Setting fan speed to %s" % speed)
+                            fan.setRotation(float(speed))
+                        except Exception, e:
+                            manager.broadCast("Could not set telescope speed to %s" % speed)
+
+                except Exception, e:
+                    manager.broadCast("Could not start dome fan. %s" % repr(e))
+                    raise
+
+            elif check.mode == 9:
+                # switch fan off
+                try:
+                    fan = str(check.parameter)
+
+                    fan = tel.getManager().getProxy(fan)
+
+                    if not fan.isSwitchedOn():
+                        manager.broadCast("Fan is already off... ")
+                    elif fan.switchOff():
+                        manager.broadCast("Telescope fan stopped")
+                    else:
+                        manager.broadCast("Could not stop telescope fan")
+                except Exception, e:
+                    manager.broadCast("Could not stop telescope fan. %s" % repr(e))
+                    raise
             else:
                 manager.broadCast("Not implemented mode %i for telescope" % (check.mode))
                 raise TelescopeActionException("Not implemented mode %i for telescope" % (check.mode))
