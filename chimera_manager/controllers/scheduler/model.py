@@ -97,32 +97,15 @@ class ObsBlock(Base):
     pid = Column(String, ForeignKey("projects.pid"))
     observed = Column(Boolean, default=False)
     scheduled = Column(Boolean, default=False)
+    actions   = relation("Action", backref=backref("obsblock", order_by="Action.id"),
+                         cascade="all, delete, delete-orphan")
 
     def __str__(self):
-        return "#%i %s[%i] [observed: %i | scheduled: %i]" % (self.blockid, self.pid,
-                                                              self.objid,
-                                                              self.observed,
-                                                              self.scheduled)
-
-
-class BlockConfig(Base):
-    __tablename__ = "blockconfig"
-    id = Column(Integer, primary_key=True)
-    bid = Column(Integer, ForeignKey("obsblock.blockid"))
-    pid = Column(String, ForeignKey("projects.pid"))
-    filter = Column(String, default=None)
-    exptime = Column(Float, default=1.0)
-    imagetype = Column(String, default=None)
-    nexp = Column(Integer, default=1)
-
-    def __str__(self):
-        return "#%i %s[%i] [filter: %s | exptime: %f | nexp: %i]" % (self.id,
-                                                                     self.pid,
-                                                                     self.bid,
-                                                                     self.filter,
-                                                                     self.exptime,
-                                                                     self.nexp)
-
+        return "#%i %s[%i] [observed: %i | scheduled: %i]: with %i actions." % (self.blockid, self.pid,
+                                                                                self.objid,
+                                                                                self.observed,
+                                                                                self.scheduled,
+                                                                                len(self.actions))
 
 class Projects(Base):
     __tablename__ = "projects"
@@ -162,8 +145,8 @@ class Program(Base):
     pid = Column(String, ForeignKey("projects.pid"))  # Project ID
     blockid = Column(Integer, ForeignKey("blockpar.bid"))  # Block ID
 
-    actions = relation("Action", backref=backref("program", order_by="Action.id"),
-                       cascade="all, delete, delete-orphan")
+    # actions = relation("Action", backref=backref("program", order_by="Action.id"),
+    #                    cascade="all, delete, delete-orphan")
 
     def __str__(self):
         return "#%d %s pi:%s" % (self.id, self.name, self.pi)
@@ -205,7 +188,7 @@ class ObservingLog(Base):
 class Action(Base):
 
     id         = Column(Integer, primary_key=True)
-    program_id = Column(Integer, ForeignKey("program.id"))
+    block_id = Column(Integer, ForeignKey("obsblock.id"))
     action_type = Column('type', String(100))
 
 

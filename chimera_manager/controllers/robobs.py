@@ -6,7 +6,7 @@ import numpy as np
 import threading
 
 from chimera_manager.controllers.scheduler.model import Session as RSession
-from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, AutoFocus, Point, Expose)
+from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock, AutoFocus, Point, Expose)
 from chimera_manager.controllers.scheduler.machine import Machine
 
 from chimera.core.chimeraobject import ChimeraObject
@@ -203,7 +203,8 @@ class RobObs(ChimeraObject):
                 if program is not None:
                     self._debuglog.debug("Adding program %s to sheduler and starting." % program)
                     cprogram = program.chimeraProgram()
-                    for act in program.actions:
+                    obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program.blockid).first()
+                    for act in obs_block.actions:
                         cact = getattr(sys.modules[__name__],act.action_type).chimeraAction(act)
                         cprogram.actions.append(cact)
                     cprogram = csession.merge(cprogram)
@@ -349,8 +350,10 @@ class RobObs(ChimeraObject):
         elif not program1:
             self._debuglog.debug('No program1 in alternate queue %i'%priority)
             dT = 0
-            for ii,act in enumerate(program2.actions):
-                if ii > 0:
+            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program2.blockid).first()
+
+            for ii,act in enumerate(obs_block.actions):
+                if act.__tablename__ == 'action_expose':
                     dT+=act.exptime*act.frames
             session.commit()
             return program2,dT
@@ -358,9 +361,14 @@ class RobObs(ChimeraObject):
         elif not program2:
             self._debuglog.debug('No program2 in alternate queue %i'%priority)
             dT = 0
-            for ii,act in enumerate(program1.actions):
+            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program1.blockid)
+            if obs_block.count() == 0:
+                self._debuglog.critical('Could not find observing block for program')
+
+            for ii,act in enumerate(obs_block[0].actions):
                 if ii > 0:
-                    dT+=act.exptime*act.frames
+                    if act.__tablename__ == 'action_expose':
+                        dT+=act.exptime*act.frames
             session.commit()
             return program1,dT
 
@@ -374,16 +382,18 @@ class RobObs(ChimeraObject):
         if wtime1 < wtime2:
             self._debuglog.debug('Program1 closer')
             dT = 0
-            for ii,act in enumerate(program1.actions):
-                if ii > 0:
+            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program1.blockid).first()
+            for ii,act in enumerate(obs_block.actions):
+                if act.__tablename__ == 'action_expose':
                     dT+=act.exptime*act.frames
             session.commit()
             return program1,dT
         else:
             self._debuglog.debug('Program2 closer')
             dT = 0
-            for ii,act in enumerate(program2.actions):
-                if ii > 0:
+            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program2.blockid).first()
+            for ii,act in enumerate(obs_block.actions):
+                if act.__tablename__ == 'action_expose':
                     dT+=act.exptime*act.frames
             session.commit()
             return program2,dT
@@ -413,7 +423,8 @@ class RobObs(ChimeraObject):
         session = RSession()
         program = session.merge(prg)
         target = session.query(Targets).filter(Targets.id == program.tid).first()
-        blockpar = session.query(BlockPar).filter(BlockPar.pid == program.pid).filter(BlockPar.bid == program.blockid).first()
+        obsblock = session.query(ObsBlock).filter(ObsBlock.blockid == program.blockid).first()
+        blockpar = session.query(BlockPar).filter(BlockPar.pid == program.pid).filter(BlockPar.bid == obsblock.bparid).first()
 
         raDec = Position.fromRaDec(target.targetRa,target.targetDec)
 

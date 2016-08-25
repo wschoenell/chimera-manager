@@ -341,6 +341,14 @@ class ExtintionMonitor(BaseScheduleAlgorith):
         nstars = 3 # if 'nstars' not in kwargs else kwargs['nstars']
         nairmass = 3 # if 'nairmass' not in kwargs else kwargs['nairmass']
 
+        overheads = {'autofocus': {'align' : 0., 'set' : 0.},
+                     'point': 0.,
+                     'readout': 0.,
+                     }
+
+        if 'overheads' in kwargs:
+            overheads.update(kwargs)
+
         if 'config' in kwargs:
             config = kwargs['config']
             if 'nstars' in config:
@@ -404,7 +412,16 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
                 blockDuration = np.append(blockDuration,0.)
 
-            blockDuration[-1]+=(target[3].exptime*target[3].nexp)
+            for blk_actions in target[0].actions:
+                if blk_actions.__tablename__ == 'action_expose':
+                    blockDuration[-1]+=((blk_actions.exptime+overheads['readout'])*blk_actions.frames)
+                elif blk_actions.__tablename__ == 'action_focus':
+                    if blk_actions.step > 0:
+                        blockDuration[-1]+=overheads['autofocus']['align']
+                    elif blk_actions.step == 0:
+                        blockDuration[-1]+=overheads['autofocus']['set']
+
+
 
         # Start allocating
         ## get lst at meadle of the observing window
