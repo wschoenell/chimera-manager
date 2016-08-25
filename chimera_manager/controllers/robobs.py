@@ -270,6 +270,8 @@ class RobObs(ChimeraObject):
         if waittime < 0:
             waittime = 0
 
+        self._debuglog.info('Wait time is: %.2f m'%(waittime/60.))
+
         for p in plist[1:]:
 
             # Get program and program duration (lenght)
@@ -296,12 +298,12 @@ class RobObs(ChimeraObject):
 
             # If alternate program fits will send it instead
 
-            awaittime=(program.slewAt-nowmjd)*86.4e3
+            awaittime=(aprogram.slewAt-nowmjd)*86.4e3
 
             if awaittime < 0:
                 awaittime = 0
 
-            self._debuglog.info('Wait time is: %.2f m'%(waittime/60.))
+            self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
 
             if awaittime+aplen < waittime+plen:
             #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:

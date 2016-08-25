@@ -17,6 +17,7 @@ import numpy as np
 import ConfigParser
 from astropy.table import Table
 from sqlalchemy import (or_,and_, desc, asc)
+import inspect
 
 from chimera.core.cli import ChimeraCLI, action, ParameterType
 from chimera.core.site import datetimeFromJD
@@ -32,6 +33,12 @@ from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, Obs
                                                          BlockConfig, Targets, ObservingLog,
                                                          Program, AutoFocus, Point, Expose)
 from chimera_manager.controllers.scheduler import algorithms
+
+schedAlgorithms = {}
+for name,obj in inspect.getmembers(algorithms):
+    if inspect.isclass(obj) and issubclass(obj,algorithms.BaseScheduleAlgorith):
+        schedAlgorithms[obj.id()] = obj
+
 ################################################################################
 
 class RobObs(ChimeraCLI):
@@ -75,6 +82,11 @@ class RobObs(ChimeraCLI):
         self.addParameters(dict(name="PID", long="pid", type='string',
                                 help="Project ID flag. Use to select targets from DB.",
                                 metavar="PID",
+                                helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="PIDCONFIG", long="pid-config", type='string',
+                                help="A Project (yaml) configuration file. This is read and passed as a dictionary to"
+                                     "the project scheduling algorithm.",
+                                metavar="PIDCONFIG",
                                 helpGroup="SCHEDULER"))
         self.addParameters(dict(name="JDstart", long="jdstart", type=float,
                                 help="Julian date of the start of the observations to be scheduled. Override date.",
@@ -792,6 +804,15 @@ class RobObs(ChimeraCLI):
             session.commit()
             return 0
 
+        pgrconfig = {}
+        if opt.PIDCONFIG is not None:
+            with open(opt.PIDCONFIG, 'r') as stream:
+                try:
+                    pgrconfig = yaml.load(stream)
+                except yaml.YAMLError as exc:
+                    self.exit(exc)
+
+
         self.out('-Selecting targets from project %s'%opt.PID)
 
         self.mktimes(opt)
@@ -873,14 +894,21 @@ class RobObs(ChimeraCLI):
 
             nquery = tList.filter(BlockPar.schedalgorith == sAL)
 
-            qFunction = algorithms.ScheduleFunction(sAL,
-                                                    obsStart=obsStart,
-                                                    obsEnd=obsEnd,
-                                                    s=self,
-                                                    query=nquery,
-                                                    site=site)
+            sched = schedAlgorithms[sAL]
 
-            obsTargets = qFunction(self.bestSlotLen(opt.PID))
+            # qFunction = algorithms.ScheduleFunction(sAL,
+            #                                         obsStart=obsStart,
+            #                                         obsEnd=obsEnd,
+            #                                         s=self,
+            #                                         query=nquery,
+            #                                         site=site)
+
+            obsTargets = sched.process(self.bestSlotLen(opt.PID),
+                                       obsStart=obsStart,
+                                       obsEnd=obsEnd,
+                                       query=nquery,
+                                       site=site,
+                                       config=pgrconfig)
 
             # First schedule all
             for bid in obsTargets:
@@ -976,10 +1004,11 @@ class RobObs(ChimeraCLI):
             #aP,aplen = self.getAlternateProgram(aprograms,time)
             #if aplen < 0:
             #    break
-            self.out('Requesting target @ %f'%otime)
+            self.out('Requesting target @ %f'%otime, end='')
             program = self.robobs.reshedule(otime)
             if not program:
                 break
+            self.out('slew@: %s' % program.slewAt)
             program = session.merge(program)
             aplen = self.calcObsTime(program,20.)
 
@@ -992,11 +1021,11 @@ class RobObs(ChimeraCLI):
                 _idle = 0.
             # print slewAt,otime
             stime = otime
-            if _idle > 1e-4:
+            if _idle > 1e-5:
                 msg += '[info: Program slew %.3fm in the future. waiting...]'%( (_idle)*24.*60. )
                 idle += _idle
                 stime+=_idle
-            elif _idle < -1e-4:
+            elif _idle < -1e-5:
                 msg += '[info: Program slew %.3fm in the past. Slewing now...]'%  ( (_idle)*24.*60. )
 
             _idle = _idle if _idle > 0 else 0.
