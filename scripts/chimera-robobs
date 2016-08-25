@@ -461,42 +461,43 @@ class RobObs(ChimeraCLI):
                                 bparid=block[4])
 
             # process pre-slew actions
-            for actconfig in config['pre-actions']:
-                act = actionDict[actconfig['action']]()
-                self.out('Action: %s' % actconfig['action'])
+            if 'pre-actions' in config:
+                for actconfig in config['pre-actions']:
+                    act = actionDict[actconfig['action']]()
+                    self.out('Action: %s' % actconfig['action'])
 
-                if actconfig['action'] == 'point':
-                    if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
-                        epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
-                        position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
-                        self.out('Coords: %s' % position)
-                        act.targetRaDec = position
-                        # act = Point(targetRaDec=position)
-                    elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
-                        position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
-                        self.out('Coords: %s' % position)
-                        act.targetAltAz = position
+                    if actconfig['action'] == 'point':
+                        if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
+                            epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
+                            position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
+                            self.out('Coords: %s' % position)
+                            act.targetRaDec = position
+                            # act = Point(targetRaDec=position)
+                        elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
+                            position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
+                            self.out('Coords: %s' % position)
+                            act.targetAltAz = position
+                        else:
+                            self.out('Target name: %s' % actconfig['name'])
+                            act.targetName = actconfig['name']
+
                     else:
-                        self.out('Target name: %s' % actconfig['name'])
-                        act.targetName = actconfig['name']
+                        for key in actconfig.keys():
+                            if hasattr(act, key) and key != 'action':
+                                value = actconfig[key]
+                                if type(value) == str:
+                                    fmt = target[0].__dict__
+                                    fmt.update(addblock.__dict__)
+                                    value = value.format(**fmt)
 
-                else:
-                    for key in actconfig.keys():
-                        if hasattr(act, key) and key != 'action':
-                            value = actconfig[key]
-                            if type(value) == str:
-                                fmt = target[0].__dict__
-                                fmt.update(addblock.__dict__)
-                                value = value.format(**fmt)
-
-                            self.out('\t%s: %s' % (key, value))
-                            try:
-                                setattr(act, key, value)
-                            except:
-                                self.err('Could not set attribute %s = %s on action %s' % (key,
-                                                                                           actconfig[key],
-                                                                                           actconfig['action']))
-                addblock.actions.append(act)
+                                self.out('\t%s: %s' % (key, value))
+                                try:
+                                    setattr(act, key, value)
+                                except:
+                                    self.err('Could not set attribute %s = %s on action %s' % (key,
+                                                                                               actconfig[key],
+                                                                                               actconfig['action']))
+                    addblock.actions.append(act)
 
             # Slew to target
             position = Position.fromRaDec(target[0].targetRa, target[0].targetDec, 'J2000')
@@ -1094,7 +1095,7 @@ class RobObs(ChimeraCLI):
                 slewtime = np.float(adist.toAS())/60./60./86.4e3 # consider 1 arcmin / second
             slewtime = slewtime if slewtime > _idle else 0 # if slewtime larger than idle time slewtime will be zero
             msg += ' | slewtime = %.5fm'%(slewtime*60.*60.)
-            self.out('@ %.5f (%.5f): Acquiring %45s %s'%(otime,slewAt,program,msg))
+            self.out('@ %.5f (%.5f): Acquiring %45s %s (len: %.2f)'%(otime,slewAt,program,msg, aplen))
             log = ObservingLog(time=datetimeFromJD(stime+2400000.5,),
                                  tid=program.tid,
                                  name=program.name,
@@ -1170,7 +1171,7 @@ class RobObs(ChimeraCLI):
         otime = 0.
 
         session = RSession()
-        obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program.blockid).first()
+        obs_block = session.query(ObsBlock).filter(ObsBlock.pid == program.pid).filter(ObsBlock.blockid == program.blockid).first()
         for ii,act in enumerate(obs_block.actions):
             if act.__tablename__ == 'action_expose':
                 otime+=(act.exptime+rot)*act.frames
@@ -1215,7 +1216,7 @@ class RobObs(ChimeraCLI):
         #             tottime += blk_action.exptime * blk_action.frames
         # session.commit()
 
-        return 60.
+        return 15.
 
     ############################################################################
 

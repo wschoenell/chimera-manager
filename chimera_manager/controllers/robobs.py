@@ -4,10 +4,13 @@ import shutil
 import time
 import numpy as np
 import threading
+import inspect
 
 from chimera_manager.controllers.scheduler.model import Session as RSession
-from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock, AutoFocus, Point, Expose)
+from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock,
+                                                         ObservingLog, AutoFocus, Point, Expose)
 from chimera_manager.controllers.scheduler.machine import Machine
+from chimera_manager.controllers.scheduler.algorithms import Higher, ExtintionMonitor, ScheduleOptions
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
@@ -126,6 +129,16 @@ class RobObs(ChimeraObject):
         session = model.Session()
         program = session.merge(program)
         self._debuglog.debug('Program %s started' % program)
+        site = self.getSite()
+        rsession = RSession()
+        log = ObservingLog(time=datetimeFromJD(site.mjd()+2400000.5,),
+                             tid=program.tid,
+                             name=program.name,
+                             priority=program.priority,
+                             action='ROBOBS: Program Started')
+        rsession.add(log)
+        rsession.commit()
+
 
     def _watchProgramComplete(self, program, status, message=None):
 
@@ -134,6 +147,17 @@ class RobObs(ChimeraObject):
         self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
                                                                     status,
                                                                     message))
+        site = self.getSite()
+        rsession = RSession()
+        log = ObservingLog(time=datetimeFromJD(site.mjd()+2400000.5,),
+                             tid=program.tid,
+                             name=program.name,
+                             priority=program.priority,
+                             action='ROBOBS: Program End with status %s(%s)' % (status,
+                                                                                message))
+        rsession.add(log)
+        rsession.commit()
+
         if status == SchedulerStatus.OK and self._current_program is not None:
             rsession = RSession()
             cp = rsession.merge(self._current_program)

@@ -61,7 +61,11 @@ class Higher(BaseScheduleAlgorith):
             except:
                 slotLen = 60.
 
-        pool_size = 1 if 'parallelness' not in kwargs.keys() else kwargs['parallelness'] # your "parallelness"
+        pool_size = 1
+        if 'config' in kwargs:
+            config = kwargs['config']
+            if 'pool_size' not in config:
+                pool_size = config['pool_size']
 
         nightstart = kwargs['obsStart']
         nightend   = kwargs['obsEnd']
@@ -300,6 +304,10 @@ class Higher(BaseScheduleAlgorith):
                                                                                              obsSlots['blockid'][itr]))
 
         return obsSlots
+
+    @staticmethod
+    def next(time):
+        pass
 
 class ExtintionMonitor(BaseScheduleAlgorith):
 
