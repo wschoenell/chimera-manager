@@ -824,6 +824,10 @@ class RobObs(ChimeraCLI):
         for sb in sched_blocks:
             sb.scheduled = 0
 
+        for sched in schedAlgorithms:
+            schedAlgorithms[sched].clean(opt.PID)
+
+
         session.commit()
 
         return 0
@@ -1056,9 +1060,10 @@ class RobObs(ChimeraCLI):
             #if aplen < 0:
             #    break
             self.out('Requesting target @ %f'%otime, end='')
-            program = self.robobs.reshedule(otime)
-            if not program:
+            program_list = self.robobs.reshedule(otime)
+            if not program_list:
                 break
+            program = session.merge(program_list[0])
             self.out('slew@: %s' % program.slewAt)
 
             program = session.merge(program)
@@ -1072,10 +1077,6 @@ class RobObs(ChimeraCLI):
             #     slewAt = otime
             #     _idle = 0.
             # print slewAt,otime
-            if not self.robobs.checkConditions(program,slewAt):
-                otime += aplen/86.4e3
-                self.out('[%s]: Conditions not met' % red('error'))
-                continue
             stime = otime
             if _idle > 1e-5:
                 msg += '[info: Program slew %.3fm in the future. waiting...]'%( (_idle)*24.*60. )
@@ -1116,6 +1117,15 @@ class RobObs(ChimeraCLI):
 
             appOpen+=aplen
             program.finished = True
+            session.commit()
+
+            blockpar= session.merge(program_list[1])
+            self.out('%s: %i %s' % (blockpar,blockpar.schedalgorith,schedAlgorithms[blockpar.schedalgorith].name()))
+            remoteManager = self.robobs.getManager()
+
+            schedAlgorithms[blockpar.schedalgorith].observed(otime,program_list,
+                                                             site = remoteManager.getProxy(
+                                                                 remoteManager.getResourcesByClass("Site")[0]))
             telPos = targetPos
             session.commit()
 
@@ -1123,6 +1133,14 @@ class RobObs(ChimeraCLI):
 
         for ap in aprograms:
             ap.finished = False
+
+        allpid = [ p.pid for p in session.query(Projects)]
+
+        session.commit()
+        for sched in schedAlgorithms:
+            for pid in allpid:
+                schedAlgorithms[sched].soft_clean(pid)
+
         session.commit()
 
         self.out('@ %.4f: Idle for %.2fh'%(otime,(obsEnd-otime)*24.))
@@ -1171,7 +1189,7 @@ class RobObs(ChimeraCLI):
         otime = 0.
 
         session = RSession()
-        obs_block = session.query(ObsBlock).filter(ObsBlock.pid == program.pid).filter(ObsBlock.blockid == program.blockid).first()
+        obs_block = session.query(ObsBlock).filter(ObsBlock.id == program.obsblock_id).first()
         for ii,act in enumerate(obs_block.actions):
             if act.__tablename__ == 'action_expose':
                 otime+=(act.exptime+rot)*act.frames
@@ -1233,18 +1251,28 @@ class RobObs(ChimeraCLI):
             objname = subblock[2].name
             pquery = session.query(Projects).filter(Projects.pid == subblock[0].pid)
 
-            program = Program(tid=subblock[0].objid,name = objname,
-                              pi='',priority=pquery[0].priority,
+            program = Program(tid=subblock[0].objid,
+                              name = objname,
+                              pi='',
+                              priority=pquery[0].priority,
                               slewAt=obstime-2400000.5,
                               pid=subblock[0].pid,
-                              blockid=subblock[0].blockid)#,exposeAt=obstime)
+                              obsblock_id=subblock[0].id,
+                              blockpar_id=subblock[1].id
+                              )#,exposeAt=obstime)
             # for blk_actions in subblock[0].actions:
             #     program.actions.append(blk_actions)
 
             programs.append(program)
 
+            sched_add = schedAlgorithms[subblock[1].schedalgorith]
+            sched_add.add(subblock)
+
         session.add_all(programs)
         session.commit()
+
+        # algorith specific process
+
 
     def altitude(self,ra,dec,start,end,tdelta=0.5,minA=10.):
 

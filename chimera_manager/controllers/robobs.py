@@ -24,6 +24,8 @@ from chimera.util.enum import Enum
 from chimera.util.output import blue, green, red
 
 RobState = Enum('OFF', 'ON')
+schedAlgorithms = {0 : Higher,
+                   1 : ExtintionMonitor}
 
 class RobObs(ChimeraObject):
 
@@ -66,6 +68,8 @@ class RobObs(ChimeraObject):
 
         self.machine = Machine(self)
         self.machine.start()
+
+        self._injectInstrument()
 
     def __stop__(self):
         self._disconnectSchedulerEvents()
@@ -160,8 +164,13 @@ class RobObs(ChimeraObject):
 
         if status == SchedulerStatus.OK and self._current_program is not None:
             rsession = RSession()
-            cp = rsession.merge(self._current_program)
+            cp = rsession.merge(self._current_program[0])
             cp.finished = True
+            rsession.commit()
+
+            block_config = rsession.merge(self._current_program[1])
+            sched = schedAlgorithms[block_config.schedalgorith]
+            sched.observed(self._current_program)
             rsession.commit()
             self._current_program = None
         # self._current_program_condition.acquire()
@@ -221,13 +230,13 @@ class RobObs(ChimeraObject):
                 # csession.add(cprog)
                 # self._current_program = cprog
                 # self._debuglog.debug("Added: %s" % cprog)
-                program = self.reshedule()
-                program = session.merge(program)
+                program_info = self.reshedule()
                 #
-                if program is not None:
+                if program_info is not None:
+                    program = session.merge(program_info[0])
+                    obs_block = session.merge(program_info[2])
                     self._debuglog.debug("Adding program %s to sheduler and starting." % program)
                     cprogram = program.chimeraProgram()
-                    obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program.blockid).first()
                     for act in obs_block.actions:
                         cact = getattr(sys.modules[__name__],act.action_type).chimeraAction(act)
                         cprogram.actions.append(cact)
@@ -237,7 +246,7 @@ class RobObs(ChimeraObject):
                     program.finished = True
                     session.commit()
                     # sched = self.getSched()
-                    self._current_program = program
+                    self._current_program = program_info
                     # sched.start()
                     # self._current_program_condition.release()
                     self._debuglog.debug("Done")
@@ -281,14 +290,14 @@ class RobObs(ChimeraObject):
         waittime=0
 
         if program is not None:
-            program = session.merge(program)
-            if ( (not program.slewAt) and (self.checkConditions(program,nowmjd))):
+            # program = session.merge(program)
+            if ( (not program[0].slewAt) and (self.checkConditions(program,nowmjd))):
                 # Program should be done right away!
                 return program
 
-            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program.slewAt))
+            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program[0].slewAt))
 
-            waittime=(program.slewAt-nowmjd)*86.4e3
+            waittime=(program[0].slewAt-nowmjd)*86.4e3
         else:
             self._debuglog.warning('No program on %i priority queue.' % plist[0])
 
@@ -303,7 +312,7 @@ class RobObs(ChimeraObject):
 
             aprogram,aplen = self.getProgram(nowmjd,p)
 
-            aprogram = session.merge(aprogram)
+            # aprogram = session.merge(aprogram)
 
             if not aprogram:
                 continue
@@ -311,11 +320,11 @@ class RobObs(ChimeraObject):
             if not program:
                 program = aprogram
 
-            if not self.checkConditions(aprogram,aprogram.slewAt):
+            if not self.checkConditions(aprogram,aprogram[0].slewAt):
                 # if condition is False, project cannot be executed. Go to next in the list
                 continue
 
-            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(aplen/60.,aprogram.slewAt))
+            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(aplen/60.,aprogram[0].slewAt))
             #return program
             #if aplen < 0 and program:
             #	log.debug('Using normal program (aplen < 0)...')
@@ -323,21 +332,23 @@ class RobObs(ChimeraObject):
 
             # If alternate program fits will send it instead
 
-            awaittime=(aprogram.slewAt-nowmjd)*86.4e3
+            awaittime=(aprogram[0].slewAt-nowmjd)*86.4e3
 
             if awaittime < 0:
                 awaittime = 0
 
             self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
 
-            if awaittime+aplen < waittime+plen:
+            # if awaittime+aplen < waittime+plen:
+            if awaittime < waittime:
             #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:
                 self._debuglog.info('Choose program with priority %i'%p)
                 # put program back with same priority
                 #self.rq.put((prt,program))
                 # return alternate program
+                session.commit()
                 return aprogram
-            if not self.checkConditions(program,program.slewAt):
+            if not self.checkConditions(program,program[0].slewAt):
                 program,plen,waittime = aprogram,aplen,awaittime
 
             #program,plen,priority = aprogram,aplen,p
@@ -347,13 +358,18 @@ class RobObs(ChimeraObject):
             #    log.debug('Choose program with priority %i'%p)
             #    return program
 
-        if program and not self.checkConditions(program,program.slewAt):
+        if program is None:
             # if project cannot be executed return nothing.
             # [TO-CHECK] What the scheduler will do? should sleep for a while and
             # [TO-CHECK] try again.
+            session.commit()
+            return None
+        elif not self.checkConditions(program,program[0].slewAt):
+            session.commit()
             return None
 
         self._debuglog.info('Choose program with priority %i'%priority)
+        session.commit()
         return program
 
     def getProgram(self, nowmjd, priority):
@@ -362,65 +378,44 @@ class RobObs(ChimeraObject):
 
         self._debuglog.debug('Looking for program with priority %i to observe @ %.3f '%(priority,nowmjd))
 
-        program1 = session.query(Program).filter(Program.finished == False).filter(Program.priority == priority).filter(Program.slewAt > nowmjd).order_by(Program.slewAt).first()
+        programs = session.query(Program,
+                                 BlockPar,
+                                 ObsBlock,
+                                 Targets).join(
+            BlockPar,Program.blockpar_id == BlockPar.id).join(
+            ObsBlock,Program.obsblock_id == ObsBlock.id).join(
+            Targets, Program.tid == Targets.id).filter(Program.priority == priority,
+                                                       Program.finished == False).order_by(Program.slewAt)
 
-        program2 = session.query(Program).filter(Program.finished == False).filter(Program.priority == priority).filter(Program.slewAt <= nowmjd).order_by(Program.slewAt.desc()).first()
+        schedAlgList = np.array([t[1].schedalgorith for t in programs])
+        unique_shed_algorithm_list = np.unique(schedAlgList)
 
-        if not program1 and not program2:
-            self._debuglog.debug('No program in alternate queue %i'%priority)
-            session.commit()
-            return None,-1
+        mjd = self.getSite().MJD()
+        dt = np.zeros(programs.count())
 
-        elif not program1:
-            self._debuglog.debug('No program1 in alternate queue %i'%priority)
-            dT = 0
-            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program2.blockid).first()
+        prog = []
+        for sAL in unique_shed_algorithm_list:
 
-            for ii,act in enumerate(obs_block.actions):
-                if act.__tablename__ == 'action_expose':
-                    dT+=act.exptime*act.frames
-            session.commit()
-            return program2,dT
+            # nquery = programs.filter(BlockPar.schedalgorith == sAL)
 
-        elif not program2:
-            self._debuglog.debug('No program2 in alternate queue %i'%priority)
-            dT = 0
-            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program1.blockid)
-            if obs_block.count() == 0:
-                self._debuglog.critical('Could not find observing block for program')
+            sched = schedAlgorithms[sAL]
 
-            for ii,act in enumerate(obs_block[0].actions):
-                if ii > 0:
+            program = sched.next(nowmjd,programs)
+
+            if program is not None:
+                self._debuglog.debug('Found program %s' % program[0])
+                dT = 0.
+
+                for ii,act in enumerate(program[2].actions):
                     if act.__tablename__ == 'action_expose':
                         dT+=act.exptime*act.frames
-            session.commit()
-            return program1,dT
+                session.commit()
+                return program,dT
 
-        self._debuglog.debug('Found 2 suitable programs in alternate queue %i'%priority)
+        self.log.warning('No program found...')
+        session.commit()
+        return None,0.
 
-        # Still need to check sky condition (seeing, moon, sky transparency....), altitude, moon...
-
-        wtime1 = (program1.slewAt-nowmjd)
-        wtime2 = (nowmjd-program2.slewAt)
-
-        if wtime1 < wtime2:
-            self._debuglog.debug('Program1 closer')
-            dT = 0
-            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program1.blockid).first()
-            for ii,act in enumerate(obs_block.actions):
-                if act.__tablename__ == 'action_expose':
-                    dT+=act.exptime*act.frames
-            session.commit()
-            return program1,dT
-        else:
-            self._debuglog.debug('Program2 closer')
-            dT = 0
-            obs_block = session.query(ObsBlock).filter(ObsBlock.blockid == program2.blockid).first()
-            for ii,act in enumerate(obs_block.actions):
-                if act.__tablename__ == 'action_expose':
-                    dT+=act.exptime*act.frames
-            session.commit()
-            return program2,dT
 
     def getPList(self):
 
@@ -430,7 +425,7 @@ class RobObs(ChimeraObject):
 
         return plist
 
-    def checkConditions(self, prg, time):
+    def checkConditions(self, program, time):
         '''
         Check if a program can be executed given all restrictions imposed by airmass, moon distance,
          seeing, cloud cover, etc...
@@ -445,10 +440,10 @@ class RobObs(ChimeraObject):
         site = self.getSite()
         # 1) check airmass
         session = RSession()
-        program = session.merge(prg)
-        target = session.query(Targets).filter(Targets.id == program.tid).first()
-        obsblock = session.query(ObsBlock).filter(ObsBlock.blockid == program.blockid).first()
-        blockpar = session.query(BlockPar).filter(BlockPar.pid == program.pid).filter(BlockPar.bid == obsblock.bparid).first()
+        # program = session.merge(prg)
+        target = session.merge(program[3])
+        # obsblock = session.merge(program[2])
+        blockpar = session.merge(program[1])
 
         raDec = Position.fromRaDec(target.targetRa,target.targetDec)
 
@@ -462,7 +457,10 @@ class RobObs(ChimeraObject):
             self._debuglog.debug('\tairmass:%.3f'%airmass)
             pass
         else:
-            self._debuglog.warning('Target %s out of range airmass... (%f < %f < %f)'%(target, blockpar.minairmass, airmass, blockpar.maxairmass))
+            self._debuglog.warning('Target %s out of range airmass... (%f < %f < %f)'%(target,
+                                                                                       blockpar.minairmass,
+                                                                                       airmass,
+                                                                                       blockpar.maxairmass))
             return False
 
         # 2) check moon Brightness
@@ -518,3 +516,18 @@ class RobObs(ChimeraObject):
 
     def getLogger(self):
         return self._debuglog
+
+    def _injectInstrument(self):
+
+        for algorithm in schedAlgorithms.values():
+
+            try:
+                inst_manager = self.getManager().getProxy(self['site'])
+                setattr(algorithm,'site',inst_manager)
+            except Exception, e:
+                self.log.error('Could not inject %s on %s handler' % ('site',
+                                                                         algorithm))
+                self.log.exception(e)
+
+
+

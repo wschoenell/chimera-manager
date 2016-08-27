@@ -26,6 +26,44 @@ Base = declarative_base(metadata=metaData)
 
 import datetime as dt
 
+class ExtMoniDB(Base):
+    __tablename__ = 'extmonidb'
+
+    id = Column(Integer, primary_key=True)
+
+    nairmass = Column(Integer)
+
+    pid = Column(String, ForeignKey("projects.pid"))
+    tid = Column(Integer, ForeignKey('targets.id'))
+
+    observed_am   = relation("ObservedAM", backref=backref("extmonidb", order_by="ObservedAM.id"),
+                         cascade="all, delete, delete-orphan")
+
+    def __init__(self, pid=None,tid=None,nairmass=1):
+        Base.__init__(self)
+
+        self.pid = pid
+        self.tid = tid
+        self.nairmass = nairmass
+
+    def __str__(self):
+        return 'extmonidb[%s:%i]: %i/%i' % (self.pid,self.tid,len(self.observed_am),self.nairmass)
+
+class ObservedAM(Base):
+
+    __tablename__ = 'observedam'
+
+    id = Column(Integer, ForeignKey('extmonidb.id'), primary_key=True)
+
+    airmass = Column(Float, primary_key=True)
+    altitude = Column(Float, primary_key=True)
+
+    def __init__(self,airmass=1.,altitude=90.):
+        Base.__init__(self)
+
+        self.airmass=airmass
+        self.altitude=altitude
+
 class Targets(Base):
     __tablename__ = "targets"
 
@@ -143,13 +181,20 @@ class Program(Base):
     # Extra information not present in standard chimera database schema,
     # required to link observing program with observing block
     pid = Column(String, ForeignKey("projects.pid"))  # Project ID
-    blockid = Column(Integer, ForeignKey("blockpar.bid"))  # Block ID
+    obsblock_id = Column(Integer, ForeignKey("obsblock.id"))  # Block ID
+    blockpar_id = Column(Integer, ForeignKey("blockpar.id"))  # BlockPar ID
 
     # actions = relation("Action", backref=backref("program", order_by="Action.id"),
     #                    cascade="all, delete, delete-orphan")
 
     def __str__(self):
-        return "#%d %s pi:%s" % (self.id, self.name, self.pi)
+        return "#%d %s:%s pi:%s [obsblock: %i|blockpar: %i | target: %i]" % (self.id,
+                                                                             self.pid,
+                                                                             self.name,
+                                                                             self.pi,
+                                                                             self.obsblock_id,
+                                                                             self.blockpar_id,
+                                                                             self.tid)
 
     def chimeraProgram(self):
         cp = CProgram()
