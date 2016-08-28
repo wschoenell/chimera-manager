@@ -64,6 +64,34 @@ class ObservedAM(Base):
         self.airmass=airmass
         self.altitude=altitude
 
+class TimedDB(Base):
+    __tablename__ = 'timeddb'
+
+    id = Column(Integer, primary_key=True)
+
+    pid = Column(String, ForeignKey("projects.pid"))
+    blockid = Column(Integer, ForeignKey("obsblock.id"))
+    tid = Column(Integer, ForeignKey('targets.id'))
+
+    execute_at = Column(Float, default=0.0)
+    observed_at = Column(Float, default=0.0)
+    finished = Column(Boolean, default=False)
+    scheduled = Column(Boolean, default=False)
+
+    def __init__(self, pid=None, execute_at = None):
+        Base.__init__(self)
+
+        if pid is not None:
+            self.pid = pid
+        if execute_at is not None:
+            self.execute_at = execute_at
+
+    def __str__(self):
+        return '[timed:%s] execute@: %.3f [%s]' % (self.execute_at,self.pid,
+                                                   'block:%i @%.3f' % (self.blockid,
+                                                                      self.observed_at)
+                                                   if self.finished else 'pending')
+
 class Targets(Base):
     __tablename__ = "targets"
 

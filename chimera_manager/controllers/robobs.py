@@ -10,7 +10,7 @@ from chimera_manager.controllers.scheduler.model import Session as RSession
 from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock,
                                                          ObservingLog, AutoFocus, Point, Expose)
 from chimera_manager.controllers.scheduler.machine import Machine
-from chimera_manager.controllers.scheduler.algorithms import Higher, ExtintionMonitor, ScheduleOptions
+from chimera_manager.controllers.scheduler import algorithms
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
@@ -24,8 +24,11 @@ from chimera.util.enum import Enum
 from chimera.util.output import blue, green, red
 
 RobState = Enum('OFF', 'ON')
-schedAlgorithms = {0 : Higher,
-                   1 : ExtintionMonitor}
+
+schedAlgorithms = {}
+for name,obj in inspect.getmembers(algorithms):
+    if inspect.isclass(obj) and issubclass(obj,algorithms.BaseScheduleAlgorith):
+        schedAlgorithms[obj.id()] = obj
 
 class RobObs(ChimeraObject):
 
