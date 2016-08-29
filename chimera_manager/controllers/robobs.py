@@ -134,17 +134,21 @@ class RobObs(ChimeraObject):
 
     def _watchProgramBegin(self,program):
         session = model.Session()
-        program = session.merge(program)
-        self._debuglog.debug('Program %s started' % program)
-        site = self.getSite()
         rsession = RSession()
-        log = ObservingLog(time=datetimeFromJD(site.mjd()+2400000.5,),
-                             tid=program.tid,
-                             name=program.name,
-                             priority=program.priority,
-                             action='ROBOBS: Program Started')
-        rsession.add(log)
-        rsession.commit()
+        try:
+            program = session.merge(program)
+            self._debuglog.debug('Program %s started' % program)
+            site = self.getSite()
+
+            log = ObservingLog(time=datetimeFromJD(site.MJD()+2400000.5,),
+                                 tid=program.tid,
+                                 name=program.name,
+                                 priority=program.priority,
+                                 action='ROBOBS: Program Started')
+            rsession.add(log)
+        finally:
+            session.commit()
+            rsession.commit()
 
 
     def _watchProgramComplete(self, program, status, message=None):
