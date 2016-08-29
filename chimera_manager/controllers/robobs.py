@@ -150,33 +150,38 @@ class RobObs(ChimeraObject):
     def _watchProgramComplete(self, program, status, message=None):
 
         session = model.Session()
-        program = session.merge(program)
-        self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
-                                                                    status,
-                                                                    message))
-        site = self.getSite()
         rsession = RSession()
-        log = ObservingLog(time=datetimeFromJD(site.MJD()+2400000.5,),
-                             tid=program.tid,
-                             name=program.name,
-                             priority=program.priority,
-                             action='ROBOBS: Program End with status %s(%s)' % (status,
-                                                                                message))
-        rsession.add(log)
-        rsession.commit()
-
-        if status == SchedulerStatus.OK and self._current_program is not None:
+        try:
+            program = session.merge(program)
+            self._debuglog.debug('Program %s completed with status %s(%s)' % (program,
+                                                                        status,
+                                                                        message))
+            site = self.getSite()
             rsession = RSession()
-            cp = rsession.merge(self._current_program[0])
-            cp.finished = True
+            log = ObservingLog(time=datetimeFromJD(site.MJD()+2400000.5,),
+                                 tid=program.tid,
+                                 name=program.name,
+                                 priority=program.priority,
+                                 action='ROBOBS: Program End with status %s(%s)' % (status,
+                                                                                    message))
+            rsession.add(log)
             rsession.commit()
 
-            block_config = rsession.merge(self._current_program[1])
-            sched = schedAlgorithms[block_config.schedalgorith]
-            sched.observed(site.MJD(),self._current_program,
-                           site)
+            if status == SchedulerStatus.OK and self._current_program is not None:
+                rsession = RSession()
+                cp = rsession.merge(self._current_program[0])
+                cp.finished = True
+                rsession.commit()
+
+                block_config = rsession.merge(self._current_program[1])
+                sched = schedAlgorithms[block_config.schedalgorith]
+                sched.observed(site.MJD(),self._current_program,
+                               site)
+                rsession.commit()
+                self._current_program = None
+        finally:
+            session.commit()
             rsession.commit()
-            self._current_program = None
         # self._current_program_condition.acquire()
         # for i in range(10):
         #     self._debuglog.debug('Sleeping %2i ...' % i)
