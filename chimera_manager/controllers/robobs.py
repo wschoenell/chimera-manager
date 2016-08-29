@@ -173,7 +173,8 @@ class RobObs(ChimeraObject):
 
             block_config = rsession.merge(self._current_program[1])
             sched = schedAlgorithms[block_config.schedalgorith]
-            sched.observed(self._current_program)
+            sched.observed(site.MJD(),self._current_program,
+                           site)
             rsession.commit()
             self._current_program = None
         # self._current_program_condition.acquire()
