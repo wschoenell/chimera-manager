@@ -156,7 +156,7 @@ class RobObs(ChimeraObject):
                                                                     message))
         site = self.getSite()
         rsession = RSession()
-        log = ObservingLog(time=datetimeFromJD(site.mjd()+2400000.5,),
+        log = ObservingLog(time=datetimeFromJD(site.MJD()+2400000.5,),
                              tid=program.tid,
                              name=program.name,
                              priority=program.priority,
