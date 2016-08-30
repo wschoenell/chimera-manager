@@ -717,9 +717,9 @@ class RobObs(ChimeraCLI):
             end = []
 
             for obs in targetObs:
-                if 'Acquisition Start' in obs.action:
+                if 'Acquisition Start' in obs.action or 'Program Started' in obs.action:
                     start.append(obs.time)
-                elif 'Acquisition End' in obs.action:
+                elif 'Acquisition End' in obs.action or 'Program End' in obs.action:
                     end.append(obs.time)
             if len(start) != len(end):
                 self.err('Start/end of observations of target does not match')
