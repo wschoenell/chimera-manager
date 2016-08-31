@@ -29,6 +29,7 @@ class StopAll(BaseResponse):
     @requires("telescope")
     @requires("camera")
     @requires("scheduler")
+    @requires("robobs")
     def process(check):
         manager = StopAll.manager
 
@@ -42,11 +43,23 @@ class StopAll(BaseResponse):
             pass
 
         try:
+            for robobs in StopAll.robobs:
+                if robobs is not None:
+                    robobs.stop()
+        except Exception, e:
+            manager.broadCast('Error trying to stop robobs: %s ' % e)
+            pass
+        else:
+            manager.broadCast('Robobs stopped.')
+
+        try:
             for scheduler in StopAll.scheduler:
                 scheduler.stop()
         except Exception, e:
-            manager.broadCast(e)
+            manager.broadCast('Error trying to stop scheduler: %s ' % e)
             pass
+        else:
+            manager.broadCast('Scheduler stopped.')
 
         try:
             for telescope in StopAll.telescope:
@@ -558,6 +571,7 @@ class StartScheduler(BaseResponse):
 
     @staticmethod
     @requires("scheduler")
+    @requires("robobs")
     def process(check):
         # sched = StartScheduler.scheduler
         manager = StartScheduler.manager
@@ -565,6 +579,14 @@ class StartScheduler(BaseResponse):
         manager.setFlag("scheduler",
                         IOFlag.OPERATING)
 
+        for robobs in StartScheduler.robobs:
+            if robobs is not None:
+                manager.broadCast('Starting robobs and waking it up.')
+                robobs.start()
+                robobs.wake()
+                return
+
+        manager.broadCast('Starting scheduler.')
         for sched in StartScheduler.scheduler:
             sched.start()
 

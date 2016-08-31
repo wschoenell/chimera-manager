@@ -32,6 +32,7 @@ class Supervisor(ChimeraObject):
                     "camera"     : "/Camera/0",
                     "dome"       : "/Dome/0",
                     "scheduler"  : None,
+                    "robobs"     : None,
                     "domefan"    : None,
                     "weatherstations" : None,
                     "telegram-token": None,          # Telegram bot token
@@ -45,7 +46,8 @@ class Supervisor(ChimeraObject):
         ChimeraObject.__init__(self)
 
 
-        self._base_instrument_list = ["site", "telescope", "camera", "dome", "scheduler", "domefan", "weatherstations"]
+        self._base_instrument_list = ["site", "telescope", "camera", "dome", "scheduler", "robobs",
+                                      "domefan", "weatherstations"]
         self._instrument_list = {}
 
         self._operationStatus = OrderedDict()

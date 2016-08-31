@@ -349,19 +349,23 @@ class CheckList(object):
 
         for instrument in handler.process.__requires__:
             try:
-                instrument_location_list = self.controller.getInstrumentLocationList(instrument)
-                instrument_proxy_list = []
-                for i, inst in enumerate(instrument_location_list):
-                    try:
-                        inst_manager = self.controller.getManager().getProxy(inst)
-                        instrument_proxy_list.append(inst_manager)
-                    except Exception, e:
-                        self.log.error('Could not inject %s %s on %s handler' % (instrument,
-                                                                                 inst,
-                                                                                 handler))
-                        self.log.exception(e)
-                if len(instrument_proxy_list) > 0:
-                    setattr(handler,instrument,instrument_proxy_list)
+                if self.controller[instrument] is not None:
+                    instrument_location_list = self.controller.getInstrumentLocationList(instrument)
+                    instrument_proxy_list = []
+                    for i, inst in enumerate(instrument_location_list):
+                        try:
+                            inst_manager = self.controller.getManager().getProxy(inst)
+                            instrument_proxy_list.append(inst_manager)
+                        except Exception, e:
+                            self.log.error('Could not inject %s %s on %s handler' % (instrument,
+                                                                                     inst,
+                                                                                     handler))
+                            self.log.exception(e)
+                    if len(instrument_proxy_list) > 0:
+                        setattr(handler,instrument,instrument_proxy_list)
+                else:
+                    setattr(handler,instrument,[ None , ])
+                    self.log.warning('Instrument %s not given.' % instrument)
             except ObjectNotFoundException, e:
                 self.log.error("No instrument to inject on %s handler" % handler)
             except InvalidLocationException, e:
