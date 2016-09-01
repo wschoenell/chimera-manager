@@ -161,7 +161,7 @@ class RobObs(ChimeraObject):
                                                                         status,
                                                                         message))
             site = self.getSite()
-            rsession = RSession()
+
             log = ObservingLog(time=datetimeFromJD(site.MJD()+2400000.5,),
                                  tid=program.tid,
                                  name=program.name,
@@ -172,7 +172,7 @@ class RobObs(ChimeraObject):
             rsession.commit()
 
             if status == SchedulerStatus.OK and self._current_program is not None:
-                rsession = RSession()
+
                 cp = rsession.merge(self._current_program[0])
                 cp.finished = True
                 rsession.commit()
@@ -182,6 +182,11 @@ class RobObs(ChimeraObject):
                 sched.observed(site.MJD(),self._current_program,
                                site)
                 rsession.commit()
+
+                obsblock = rsession.merge(self._current_program[2])
+                obsblock.observed = True
+                rsession.commit()
+                
                 self._current_program = None
         finally:
             session.commit()
