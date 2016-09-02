@@ -610,7 +610,7 @@ class StopRobObs(BaseResponse):
         manager = StartScheduler.manager
 
         manager.setFlag("robobs",
-                        IOFlag.OPERATING)
+                        IOFlag.READY)
 
         for robobs in StartScheduler.robobs:
             if robobs is not None:
