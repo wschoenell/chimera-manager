@@ -655,9 +655,9 @@ class RobObs(ChimeraCLI):
             help="Process entries on Observing Log database and generate charts and graphs with observing information. User can specify start/end dates, only start or end works as well.",
             actionGroup="")
     def makeObservingLog(self,opt):
-        # import matplotlib
+        import matplotlib.pyplot as py
         # matplotlib.use('macosx')
-        import pylab as py
+        # import pylab as py
         # import plotly.plotly as py
         # from plotly.graph_objs import Data,Scatter,Layout,Figure,YAxis,Line
 
@@ -1308,6 +1308,7 @@ def main():
 ################################################################################
 
 if __name__ == '__main__':
+
     main()
 
 ################################################################################

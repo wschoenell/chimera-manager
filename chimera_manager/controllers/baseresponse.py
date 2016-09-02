@@ -579,6 +579,21 @@ class StartScheduler(BaseResponse):
         manager.setFlag("scheduler",
                         IOFlag.OPERATING)
 
+        manager.broadCast('Starting scheduler.')
+        for sched in StartScheduler.scheduler:
+            sched.start()
+
+class StartRobObs(BaseResponse):
+
+    @staticmethod
+    @requires("robobs")
+    def process(check):
+        # sched = StartScheduler.scheduler
+        manager = StartScheduler.manager
+
+        manager.setFlag("robobs",
+                        IOFlag.OPERATING)
+
         for robobs in StartScheduler.robobs:
             if robobs is not None:
                 manager.broadCast('Starting robobs and waking it up.')
@@ -586,10 +601,22 @@ class StartScheduler(BaseResponse):
                 robobs.wake()
                 return
 
-        manager.broadCast('Starting scheduler.')
-        for sched in StartScheduler.scheduler:
-            sched.start()
+class StopRobObs(BaseResponse):
 
+    @staticmethod
+    @requires("robobs")
+    def process(check):
+        # sched = StartScheduler.scheduler
+        manager = StartScheduler.manager
+
+        manager.setFlag("robobs",
+                        IOFlag.OPERATING)
+
+        for robobs in StartScheduler.robobs:
+            if robobs is not None:
+                manager.broadCast('Stopping robobs.')
+                robobs.stop()
+                return
 
 class ConfigureScheduler(BaseResponse):
     @staticmethod
