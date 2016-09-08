@@ -140,7 +140,13 @@ class Machine(threading.Thread):
                 except Exception, e:
                     self.log.exception(e)
                     pass
-            session.commit()
+            try:
+                session.commit()
+            except Exception, e:
+                self.log.exception(e)
+                session.rollback()
+                session.commit()
+
             self.state(State.IDLE)
 
         t = threading.Thread(target=process)
