@@ -111,6 +111,12 @@ class RobObs(ChimeraCLI):
                                 help="Date (yyyy/mm/dd-hh:mm:ss.s) of the end of the observations to be scheduled.",
                                 metavar="dend",
                                 helpGroup="SCHEDULER"))
+        self.addParameters(dict(name="simulation",
+                                long="simulation",
+                                type=ParameterType.BOOLEAN,
+                                default=False,
+                                helpGroup="SCHEDULER",
+                                help="Make observing log for simulation."))
 
     ############################################################################
 
@@ -674,13 +680,15 @@ class RobObs(ChimeraCLI):
             tid = np.append(tid,q.tid)
             #self.out('%s'%q)
 
+        color_config = None
+        if opt.filename is not None:
+            with open(opt.filename, 'r') as fp:
+                color_config = yaml.load(fp)
+
         tid = np.unique(tid)
 
         # site = self.site()
         trace = []
-
-        color = {0 : 'red',
-                 1 : 'blue'}
 
         alt_min= 30
         alt_max= 90
@@ -694,7 +702,9 @@ class RobObs(ChimeraCLI):
                 [alt_min+10,alt_min+10],'r--')
 
         for id in tid:
-            target = session.query(Targets).filter(Targets.id == id)[0]
+            target = session.query(Targets).filter(Targets.id == id).first()
+            if target is None:
+                continue
             time,alt = self.altitude(ra = target.targetRa,
                                      dec = target.targetDec,
                                      start = self.obsStart-dt.timedelta(hours=5),
@@ -713,13 +723,22 @@ class RobObs(ChimeraCLI):
             #              )
 
             targetObs = query.filter(ObservingLog.tid == id)
+            program = session.query(Program).filter(Program.priority == targetObs[0].priority).first()
+
             start = []
             end = []
+            if opt.simulation:
+                obs_start = 'Acquisition Start'
+                obs_end = 'Acquisition End'
+            else:
+                obs_start = 'Program Started'
+                obs_end = 'Program End'
 
             for obs in targetObs:
-                if 'Acquisition Start' in obs.action or 'Program Started' in obs.action:
+
+                if obs_start in obs.action:
                     start.append(obs.time)
-                elif 'Acquisition End' in obs.action or 'Program End' in obs.action:
+                elif obs_end in obs.action:
                     end.append(obs.time)
             if len(start) != len(end):
                 self.err('Start/end of observations of target does not match')
@@ -732,7 +751,14 @@ class RobObs(ChimeraCLI):
                                          start = start[i],
                                          end = end[i],
                                          tdelta=1./60.)
-                py.fill_between(time,alt,ylim[0],facecolor='green', alpha=0.5)
+
+                color = 'green'
+                alpha = 0.5
+                if color_config is not None and program.pid in color_config:
+                    color = color_config[program.pid]['color']
+                    alpha = color_config[program.pid]['alpha']
+
+                py.fill_between(time,alt,ylim[0],facecolor=color, alpha=alpha)
                 # trace.append(Scatter(x = time,
                 #                      y = alt, #np.exp(1.-1./secz)
                 #                      mode='lines',

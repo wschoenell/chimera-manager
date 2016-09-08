@@ -376,7 +376,7 @@ class TelescopeAction(BaseResponse):
                 ra,dec = check.parameter.split(",")
                 target = Position.fromRaDec(ra, dec)
                 manager.broadCast("Slewing telescope to ra/dec %s" % target)
-                tel.slewToAltAz(target)
+                tel.slewToRaDec(target)
             elif check.mode == 7:
                 manager.broadCast("Stopping telescope tracking")
                 tel.stopTracking()
@@ -655,6 +655,9 @@ class ConfigureScheduler(BaseResponse):
                 except yaml.YAMLError as exc:
 
                     manager.broadCast(exc)
+                    raise
+                except Exception, e:
+                    manager.broadCast('Exception trying to start scheduler: %s' % repr(e))
                     raise
 
             session = Session()
