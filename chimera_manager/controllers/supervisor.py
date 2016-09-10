@@ -15,6 +15,7 @@ from chimera.core.event import event
 from chimera.core.log import fmt
 from chimera.controllers.scheduler.states import State as SchedState
 from chimera.controllers.scheduler.status import SchedulerStatus as SchedStatus
+from chimera.interfaces.telescope import TelescopeStatus
 
 import threading
 import telnetlib
@@ -437,8 +438,8 @@ class Supervisor(ChimeraObject):
     def getSched(self,index=0):
         return self.getManager().getProxy(self._instrument_list["scheduler"][index])
 
-    def getSched(self):
-        return self.getManager().getProxy(self["scheduler"])
+    def getRobObs(self,index=0):
+        return self.getManager().getProxy(self["robobs"][index])
 
     def getItems(self):
         return self.checklist.itemsList
@@ -602,6 +603,22 @@ class Supervisor(ChimeraObject):
 
     def _watchTrackingStopped(self, position, status):
         self.setFlag("telescope",InstrumentOperationFlag.READY)
+        self.broadCast('Telescope tracking stopped with status %s.' % status)
+        if status == TelescopeStatus.OBJECT_TOO_LOW:
+            # Todo: Make this an action on the checklist database, so user can configure what to do
+            robobs = self.getRobObs()
+            sched = self.getSched()
+            robobs.stop()
+            sched.stop()
+            tel = self.getTel()
+            from chimera.util.position import Position
+            from chimera.util.coord import Coord
+            park_position = Position.fromAltAz(Coord.fromD(80),Coord.fromD(89))
+            tel.slewToAltAz(park_position)
+            robobs.reset_scheduler()
+            robobs.start()
+            robobs.wake()
+
 
     def _watchTelescopePark(self):
 

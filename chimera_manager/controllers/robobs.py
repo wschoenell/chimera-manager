@@ -95,6 +95,20 @@ class RobObs(ChimeraObject):
         self._debuglog.debug("Waking machine up...")
         self.machine.state(SchedState.START)
 
+    def reset_scheduler(self):
+        csession = model.Session()
+
+        cprog = model.Program(  name =  "RESET",
+                                pi = "ROBOBS",
+                                priority = 1 )
+        cprog.actions.append(model.Expose(frames = 1,
+                                          exptime = 0,
+                                          imageType = "BIAS",
+                                          shutter = "CLOSE",
+                                          filename = "RESET-$DATE-$TIME"))
+
+        csession.add(cprog)
+
     def getSite(self):
         return self.getManager().getProxy(self["site"])
 
@@ -269,7 +283,8 @@ class RobObs(ChimeraObject):
                     # self._current_program_condition.release()
                     self._debuglog.debug("Done")
                 else:
-                    self._debuglog.debug("No program on robobs queue.")
+                    self._debuglog.warning("No program on robobs queue. Stopping robobs.")
+                    self.stop()
 
                 csession.commit()
                 session.commit()
