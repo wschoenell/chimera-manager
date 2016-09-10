@@ -337,8 +337,8 @@ class RobObs(ChimeraObject):
 
             if not program:
                 program = aprogram
-
-            if not self.checkConditions(aprogram,aprogram[0].slewAt):
+            checktime = nowmjd if nowmjd > aprogram[0].slewAt else aprogram[0].slewAt
+            if not self.checkConditions(aprogram,checktime):
                 # if condition is False, project cannot be executed. Go to next in the list
                 continue
 
@@ -366,7 +366,8 @@ class RobObs(ChimeraObject):
                 # return alternate program
                 session.commit()
                 return aprogram
-            if not self.checkConditions(program,program[0].slewAt):
+            checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
+            if not self.checkConditions(program,checktime):
                 program,plen,waittime = aprogram,aplen,awaittime
 
             #program,plen,priority = aprogram,aplen,p
@@ -376,13 +377,14 @@ class RobObs(ChimeraObject):
             #    log.debug('Choose program with priority %i'%p)
             #    return program
 
+        checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
         if program is None:
             # if project cannot be executed return nothing.
             # [TO-CHECK] What the scheduler will do? should sleep for a while and
             # [TO-CHECK] try again.
             session.commit()
             return None
-        elif not self.checkConditions(program,program[0].slewAt):
+        elif not self.checkConditions(program,checktime):
             session.commit()
             return None
 
@@ -475,7 +477,7 @@ class RobObs(ChimeraObject):
             self._debuglog.debug('\tairmass:%.3f'%airmass)
             pass
         else:
-            self._debuglog.warning('Target %s out of range airmass... (%f < %f < %f)'%(target,
+            self._debuglog.warning('Target %s out of airmass range @ %.3f... (%f < %f < %f)'%(target,time,
                                                                                        blockpar.minairmass,
                                                                                        airmass,
                                                                                        blockpar.maxairmass))
