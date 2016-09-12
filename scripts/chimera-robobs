@@ -946,7 +946,6 @@ class RobObs(ChimeraCLI):
                                                                     Targets.targetRa < lstend).join(BlockPar).join(
                 Targets).order_by(desc(Targets.targetAH))
         else:
-
             tList = session.query(ObsBlock, BlockPar, Targets).filter(ObsBlock.pid == FLAG,
                                                                       BlockPar.pid == FLAG,
                                                                       ObsBlock.scheduled == False,
@@ -1268,7 +1267,7 @@ class RobObs(ChimeraCLI):
 
         session = RSession()
 
-        self.out('%s'%block[:][0][0])
+        self.out('%s '%block[:][0][0])
 
         programs = []
 
@@ -1276,7 +1275,7 @@ class RobObs(ChimeraCLI):
 
             objname = subblock[2].name
             pquery = session.query(Projects).filter(Projects.pid == subblock[0].pid)
-
+            self.out('\t %s' % subblock[2])
             program = Program(tid=subblock[0].objid,
                               name = objname,
                               pi='',
