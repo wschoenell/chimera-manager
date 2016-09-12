@@ -682,9 +682,11 @@ class RobObs(ChimeraCLI):
 
         color_config = None
         if opt.filename is not None:
-            with open(opt.filename, 'r') as fp:
-                color_config = yaml.load(fp)
-
+            try:
+                with open(opt.filename, 'r') as fp:
+                    color_config = yaml.load(fp)
+            except IOError, e:
+                self.err('Could not find pid-color code file. Using same color for all projects.')
         tid = np.unique(tid)
 
         # site = self.site()
@@ -944,7 +946,7 @@ class RobObs(ChimeraCLI):
                                                                     ObsBlock.observed == False,
                                                                     Targets.targetRa > lststart,
                                                                     Targets.targetRa < lstend).join(BlockPar).join(
-                Targets).order_by(desc(Targets.targetAH))
+                Targets).order_by(asc(Targets.targetAH))
         else:
             tList = session.query(ObsBlock, BlockPar, Targets).filter(ObsBlock.pid == FLAG,
                                                                       BlockPar.pid == FLAG,
@@ -954,7 +956,7 @@ class RobObs(ChimeraCLI):
                                                                                Targets.targetRa < 24.),
                                                                           and_(Targets.targetRa > 0.,
                                                                                Targets.targetRa < lstend))).join(
-                Targets).order_by(desc(Targets.targetAH))
+                Targets).order_by(asc(Targets.targetAH))
 
         if len(tList[:]) == 0:
             self.out(blue('+') + 'No targets available from this project this night...')
