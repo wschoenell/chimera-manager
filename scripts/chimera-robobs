@@ -951,7 +951,7 @@ class RobObs(ChimeraCLI):
             tList = session.query(ObsBlock,BlockPar,Targets).filter(ObsBlock.pid == FLAG,
                                                                     BlockPar.pid == FLAG,
                                                                     ObsBlock.scheduled == False,
-                                                                    ObsBlock.observed == False,
+                                                                    ObsBlock.completed == False,
                                                                     Targets.targetRa > lststart,
                                                                     Targets.targetRa < lstend).join(BlockPar).join(
                 Targets).order_by(asc(Targets.targetAH))
@@ -959,7 +959,7 @@ class RobObs(ChimeraCLI):
             tList = session.query(ObsBlock, BlockPar, Targets).filter(ObsBlock.pid == FLAG,
                                                                       BlockPar.pid == FLAG,
                                                                       ObsBlock.scheduled == False,
-                                                                      ObsBlock.observed == False,
+                                                                      ObsBlock.completed == False,
                                                                       or_(and_(Targets.targetRa > lststart,
                                                                                Targets.targetRa < 24.),
                                                                           and_(Targets.targetRa > 0.,

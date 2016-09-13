@@ -92,6 +92,14 @@ class TimedDB(Base):
                                                                       self.observed_at)
                                                    if self.finished else 'pending')
 
+class Recurrent(Base):
+    __tablename__ = 'recurrent'
+
+    id = Column(Integer, primary_key=True)
+    visits = Column(Integer,default=0)
+    lastVisit = Column(DateTime, default = None)
+
+
 class Targets(Base):
     __tablename__ = "targets"
 
@@ -162,6 +170,8 @@ class ObsBlock(Base):
     bparid = Column(Integer, ForeignKey("blockpar.bid"))
     pid = Column(String, ForeignKey("projects.pid"))
     observed = Column(Boolean, default=False)
+    completed= Column(Boolean, default=False)
+    lastObservation = Column(DateTime, default=None)
     scheduled = Column(Boolean, default=False)
     actions   = relation("Action", backref=backref("obsblock", order_by="Action.id"),
                          cascade="all, delete, delete-orphan")
