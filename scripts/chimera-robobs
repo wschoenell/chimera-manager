@@ -451,15 +451,22 @@ class RobObs(ChimeraCLI):
             addblock = session.query(ObsBlock).filter(ObsBlock.objid == block[2]).filter(
                 ObsBlock.blockid == block[1]).filter(ObsBlock.pid == block[0])
 
+            observed = False
             if addblock.count() > 0:
                 self.out(red('<<')+'Deleting %i blocks.' % addblock.count())
                 for bl in addblock:
+                    if bl.observed:
+                        self.out(red('!!') + 'Block %i already observed. Leaving as is.' % bl.id)
+                        observed = True
+                        break
                     for blk_action in bl.actions:
-                        self.out(red('<<')+'Deleting: %s' % blk_action)
+                        # self.out(red('<<')+'Deleting: %s' % blk_action)
                         session.delete(blk_action)
                     session.delete(bl)
                     session.commit()
 
+            if observed:
+                continue
             self.out(blue('>>')+'Adding block: %s' % block)
             addblock = ObsBlock(objid=block[2],
                                 blockid=block[1],
@@ -470,21 +477,21 @@ class RobObs(ChimeraCLI):
             if 'pre-actions' in config:
                 for actconfig in config['pre-actions']:
                     act = actionDict[actconfig['action']]()
-                    self.out('Action: %s' % actconfig['action'])
+                    # self.out('Action: %s' % actconfig['action'])
 
                     if actconfig['action'] == 'point':
                         if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
                             epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
                             position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
-                            self.out('Coords: %s' % position)
+                            # self.out('Coords: %s' % position)
                             act.targetRaDec = position
                             # act = Point(targetRaDec=position)
                         elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
                             position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
-                            self.out('Coords: %s' % position)
+                            # self.out('Coords: %s' % position)
                             act.targetAltAz = position
                         else:
-                            self.out('Target name: %s' % actconfig['name'])
+                            # self.out('Target name: %s' % actconfig['name'])
                             act.targetName = actconfig['name']
 
                     else:
@@ -496,7 +503,7 @@ class RobObs(ChimeraCLI):
                                     fmt.update(addblock.__dict__)
                                     value = value.format(**fmt)
 
-                                self.out('\t%s: %s' % (key, value))
+                                # self.out('\t%s: %s' % (key, value))
                                 try:
                                     setattr(act, key, value)
                                 except:
@@ -510,25 +517,26 @@ class RobObs(ChimeraCLI):
             slewto = Point()
             slewto.targetRaDec = position
             addblock.actions.append(slewto)
+            self.out("Slew to: %s (%s)" % (target[0].name, slewto))
 
             # process pos-slew actions
             for actconfig in config['pos-actions']:
                 act = actionDict[actconfig['action']]()
-                self.out('Action: %s' % actconfig['action'])
+                # self.out('Action: %s' % actconfig['action'])
 
                 if actconfig['action'] == 'point':
                     if 'ra' in actconfig.keys() and 'dec' in actconfig.keys():
                         epoch = 'J2000' if 'epoch' not in actconfig.keys() else actconfig['epoch']
                         position = Position.fromRaDec(actconfig['ra'], actconfig['dec'], epoch)
-                        self.out('Coords: %s' % position)
+                        # self.out('Coords: %s' % position)
                         act.targetRaDec = position
                         # act = Point(targetRaDec=position)
                     elif 'alt' in actconfig.keys() and 'az' in actconfig.keys():
                         position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
-                        self.out('Coords: %s' % position)
+                        # self.out('Coords: %s' % position)
                         act.targetAltAz = position
                     else:
-                        self.out('Target name: %s' % actconfig['name'])
+                        # self.out('Target name: %s' % actconfig['name'])
                         act.targetName = actconfig['name']
 
                 else:
@@ -540,7 +548,7 @@ class RobObs(ChimeraCLI):
                                 fmt.update(addblock.__dict__)
                                 value = value.format(**fmt)
 
-                            self.out('\t%s: %s' % (key, value))
+                            # self.out('\t%s: %s' % (key, value))
                             try:
                                 setattr(act, key, value)
                             except:

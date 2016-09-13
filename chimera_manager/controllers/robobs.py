@@ -20,6 +20,7 @@ from chimera.controllers.scheduler.states import State as SchedState
 from chimera.controllers.scheduler.status import SchedulerStatus
 from chimera.controllers.scheduler import model
 from chimera.util.position import Position
+from chimera.util.coord import Coord
 from chimera.util.enum import Enum
 from chimera.util.output import blue, green, red
 
@@ -44,6 +45,7 @@ class RobObs(ChimeraObject):
         self.rob_state = RobState.OFF
         self._current_program = None
         self._current_program_condition = threading.Condition()
+        self._no_program_on_queue = False
         self._debuglog = None
         self.machine = None
 
@@ -101,11 +103,13 @@ class RobObs(ChimeraObject):
         cprog = model.Program(  name =  "RESET",
                                 pi = "ROBOBS",
                                 priority = 1 )
-        cprog.actions.append(model.Expose(frames = 1,
-                                          exptime = 0,
-                                          imageType = "BIAS",
-                                          shutter = "CLOSE",
-                                          filename = "RESET-$DATE-$TIME"))
+        cleanProgram = model.Expose()
+        cleanProgram.frames = 1
+        cleanProgram.exptime = 0
+        cleanProgram.imageType = "BIAS"
+        cleanProgram.shutter = "CLOSE"
+        cleanProgram.filename = "RESET-$DATE-$TIME"
+        cprog.actions.append(cleanProgram)
 
         csession.add(cprog)
 
@@ -279,12 +283,27 @@ class RobObs(ChimeraObject):
                     session.commit()
                     # sched = self.getSched()
                     self._current_program = program_info
+                    self._no_program_on_queue = False
                     # sched.start()
                     # self._current_program_condition.release()
                     self._debuglog.debug("Done")
+                elif self._no_program_on_queue:
+                    self._debuglog.warning("No program on robobs queue, waiting for 5 min.")
+                    time.sleep(300)
                 else:
-                    self._debuglog.warning("No program on robobs queue. Stopping robobs.")
-                    self.stop()
+                    self._debuglog.warning("No program on robobs queue. Sending telescope to park position.")
+                    # ToDo: Run an action from the database to send telescope to park position.
+                    cprog = model.Program(  name =  "SAFETY",
+                                            pi = "ROBOBS",
+                                            priority = 1 )
+                    to_park_position =  model.Point()
+                    to_park_position.targetAltAz = Position.fromAltAz(Coord.fromD(88.),
+                                                               Coord.fromD(89.))
+                    cprog.actions.append(to_park_position)
+
+                    csession.add(cprog)
+                    self._no_program_on_queue = True
+                    # self.stop()
 
                 csession.commit()
                 session.commit()
