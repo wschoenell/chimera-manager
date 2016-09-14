@@ -119,6 +119,9 @@ class Higher(BaseScheduleAlgorith):
             if 'pool_size' in config:
                 pool_size = config['pool_size']
 
+            if 'slotLen' in config:
+                slotLen = config['slotLen']
+
         nightstart = kwargs['obsStart']
         nightend   = kwargs['obsEnd']
         site = kwargs['site']
@@ -360,10 +363,26 @@ class Higher(BaseScheduleAlgorith):
     @staticmethod
     def next(time, programs):
 
-        lst = Higher.site.LST(datetimeFromJD(time+2400000.5)).H
-        ah = np.array([ np.abs(lst - program[3].targetRa) for program in programs])
-        iprog = np.argmin(ah)
+        dt = np.array([ np.abs(time - program[0].slewAt) for program in programs])
+        iprog = np.argmin(dt)
         return programs[iprog]
+        # lst = Higher.site.LST(datetimeFromJD(time+2400000.5)).H
+        # ah = np.array([ np.abs(lst - program[3].targetRa) for program in programs])
+        # iprog = np.argmin(ah)
+        # return programs[iprog]
+
+    @staticmethod
+    def observed(time, program, site = None):
+        '''
+        Process program as observed.
+
+        :param program:
+        :return:
+        '''
+        session = Session()
+        obsblock = session.merge(program[2])
+        obsblock.observed = True
+
 
 class ExtintionMonitor(BaseScheduleAlgorith):
 
@@ -849,6 +868,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
         session = Session()
         prog = session.merge(program[0])
+        obsblock = session.merge(program[2])
         target = session.merge(program[3])
         extmoni_info = session.query(ExtMoniDB).filter(ExtMoniDB.pid == prog.pid,
                                                        ExtMoniDB.tid == prog.tid).first()
@@ -862,6 +882,8 @@ class ExtintionMonitor(BaseScheduleAlgorith):
         observed_am = ObservedAM(altitude=alt)
 
         extmoni_info.observed_am.append(observed_am)
+
+        obsblock.observed = True
 
         session.commit()
 
@@ -973,6 +995,8 @@ class Timed(BaseScheduleAlgorith):
                 TimedDB.execute_at).first()
             if timed_observations is not None:
                 timed_observations.finished = True
+            block.observed = True
+
         finally:
             session.commit()
 

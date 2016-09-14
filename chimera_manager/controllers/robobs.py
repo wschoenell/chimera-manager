@@ -201,8 +201,6 @@ class RobObs(ChimeraObject):
                                site)
                 rsession.commit()
 
-                obsblock = rsession.merge(self._current_program[2])
-                obsblock.observed = True
                 rsession.commit()
                 
                 self._current_program = None
