@@ -1160,7 +1160,8 @@ class RobObs(ChimeraCLI):
 
             schedAlgorithms[blockpar.schedalgorith].observed(otime,program_list,
                                                              site = remoteManager.getProxy(
-                                                                 remoteManager.getResourcesByClass("Site")[0]))
+                                                                 remoteManager.getResourcesByClass("Site")[0]),
+                                                             soft = True)
             telPos = targetPos
             session.commit()
 

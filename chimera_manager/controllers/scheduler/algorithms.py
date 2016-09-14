@@ -1,7 +1,8 @@
 
 import numpy as np
 import yaml
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
+import datetime
 
 from chimera_manager.controllers.scheduler.model import ObsBlock, ExtMoniDB, ObservedAM, TimedDB, Session
 from chimera.util.enum import Enum
@@ -54,7 +55,7 @@ class BaseScheduleAlgorith():
         pass
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
         '''
         Process program as observed.
 
@@ -122,6 +123,9 @@ class Higher(BaseScheduleAlgorith):
             config = kwargs['config']
             if 'pool_size' in config:
                 pool_size = config['pool_size']
+
+            if 'slotLen' in config:
+                slotLen = config['slotLen']
 
         nightstart = kwargs['obsStart']
         nightend   = kwargs['obsEnd']
@@ -364,13 +368,16 @@ class Higher(BaseScheduleAlgorith):
     @staticmethod
     def next(time, programs):
 
-        lst = Higher.site.LST(datetimeFromJD(time+2400000.5)).H
-        ah = np.array([ np.abs(lst - program[3].targetRa) for program in programs])
-        iprog = np.argmin(ah)
+        dt = np.array([ np.abs(time - program[0].slewAt) for program in programs])
+        iprog = np.argmin(dt)
         return programs[iprog]
+        # lst = Higher.site.LST(datetimeFromJD(time+2400000.5)).H
+        # ah = np.array([ np.abs(lst - program[3].targetRa) for program in programs])
+        # iprog = np.argmin(ah)
+        # return programs[iprog]
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
         '''
         Process program as observed.
 
@@ -380,8 +387,9 @@ class Higher(BaseScheduleAlgorith):
         session = Session()
         obsblock = session.merge(program[2])
         obsblock.observed = True
-        obsblock.completed= True
-        obsblock.lastObservation = site.ut().replace(tzinfo=None)
+        if not soft:
+            obsblock.completed= True
+            obsblock.lastObservation = site.ut().replace(tzinfo=None)
         session.commit()
 
 
@@ -861,7 +869,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
         return observe_program
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
         mjd = time #ExtintionMonitor.site.MJD()
         if site is None:
             site = ExtintionMonitor.site
@@ -984,7 +992,7 @@ class Timed(BaseScheduleAlgorith):
             session.commit()
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
 
         session = Session()
 
@@ -1044,18 +1052,18 @@ class Recurrent(BaseScheduleAlgorith):
                 slotLen = 1800.
         elif 'slotLen' in config:
             slotLen = config['slotLen']
-        from chimera_manager.controllers.scheduler.model import Targets
+        from chimera_manager.controllers.scheduler.model import Targets,ObsBlock
         # Filter target by observing data. Leave "NeverObserved" and those observed more than recurrence_time days ago
-        kwargs['query'].filter(or_(Targets.observed == False,
-                                Targets.lastObservation ) )
+        today = kwargs['site'].ut().replace(tzinfo=None)
+        reference_date = today - datetime.timedelta(days=recurrence_time)
+
+        # Exclude targets that where observed less then a specified ammount of time
+        kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
+                                                     and_(ObsBlock.observed == True,
+                                                          ObsBlock.lastObservation < reference_date)))
         # Select targets with the Higher algorithm
         programs = Higher.process(slotLen=slotLen,*args,**kwargs)
 
-        session = Session()
-
-        # Exclude targets that where observed less then a specified ammount of time
-        for program in programs:
-            print program
         return programs
 
 
@@ -1068,47 +1076,19 @@ class Recurrent(BaseScheduleAlgorith):
         :param programs:
         :return:
         '''
-        pass
+
+        return Higher.next(time,programs)
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
         '''
         Process program as observed.
 
         :param program:
         :return:
         '''
-        pass
+        Higher.observed(time,program,site)
 
-    @staticmethod
-    def add(block):
-        '''
-        Process block to add it to the queue.
-
-        :param block:
-        :return:
-        '''
-        pass
-
-    @staticmethod
-    def clean(pid):
-        '''
-        Hard clean any schedule routine. Wipe all information from database
-        :return:
-        '''
-        pass
-
-    @staticmethod
-    def soft_clean(pid,block=None):
-        '''
-        Soft clean any schedule routine. This will only erase information about observations.
-        :return:
-        '''
-        pass
-
-    @staticmethod
-    def model():
-        pass
 
 def Airmass(alt):
 

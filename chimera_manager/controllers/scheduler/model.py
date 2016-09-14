@@ -177,10 +177,19 @@ class ObsBlock(Base):
                          cascade="all, delete, delete-orphan")
 
     def __str__(self):
-        return "#%i %s[%i] [observed: %i | scheduled: %i]: with %i actions." % (self.blockid, self.pid,
+        if self.observed:
+            return "#%i %s[%i] [lastObserved: %s%s%s]: with %i actions." % (self.blockid,
+                                                                                  self.pid,
+                                                                                  self.objid,
+                                                                                  self.lastObservation,
+                                                                            "| status: scheduled" if self.scheduled else "",
+                                                                            "| status: completed" if self.completed else "",
+                                                                            len(self.actions))
+
+        else:
+            return "#%i %s[%i] [#NeverObserved%s]: with %i actions." % (self.blockid, self.pid,
                                                                                 self.objid,
-                                                                                self.observed,
-                                                                                self.scheduled,
+                                                                                "| status: scheduled" if self.scheduled else "",
                                                                                 len(self.actions))
 
 class Projects(Base):
