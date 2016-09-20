@@ -669,6 +669,8 @@ class RobObs(ChimeraCLI):
             help="Process entries on Observing Log database and generate charts and graphs with observing information. User can specify start/end dates, only start or end works as well.",
             actionGroup="")
     def makeObservingLog(self,opt):
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as py
         # matplotlib.use('macosx')
         # import pylab as py
