@@ -382,6 +382,7 @@ class Higher(BaseScheduleAlgorith):
         session = Session()
         obsblock = session.merge(program[2])
         obsblock.observed = True
+        session.commit()
 
 
 class ExtintionMonitor(BaseScheduleAlgorith):
