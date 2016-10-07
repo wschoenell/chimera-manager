@@ -956,7 +956,7 @@ class RobObs(ChimeraCLI):
                                                                     ObsBlock.completed == False,
                                                                     Targets.targetRa > lststart,
                                                                     Targets.targetRa < lstend).join(BlockPar).join(
-                Targets).order_by(asc(Targets.targetAH))
+                Targets).order_by(desc(Targets.targetAH))
         else:
             tList = session.query(ObsBlock, BlockPar, Targets).filter(ObsBlock.pid == FLAG,
                                                                       BlockPar.pid == FLAG,
@@ -966,7 +966,7 @@ class RobObs(ChimeraCLI):
                                                                                Targets.targetRa < 24.),
                                                                           and_(Targets.targetRa > 0.,
                                                                                Targets.targetRa < lstend))).join(
-                Targets).order_by(asc(Targets.targetAH))
+                Targets).order_by(desc(Targets.targetAH))
 
         if len(tList[:]) == 0:
             self.out(blue('+') + 'No targets available from this project this night...')
@@ -974,6 +974,8 @@ class RobObs(ChimeraCLI):
             return -1
 
         self.out('-Found %i suitable targets...'%(len(tList[:])))
+        for target in tList:
+            self.out(" - %s" % target[2])
 
         schedAlgList = np.array([t[1].schedalgorith for t in tList])
         uSAL = np.unique(schedAlgList)
@@ -1231,6 +1233,8 @@ class RobObs(ChimeraCLI):
         for ii,act in enumerate(obs_block.actions):
             if act.__tablename__ == 'action_expose':
                 otime+=(act.exptime+rot)*act.frames
+            if act.__tablename__ == 'action_focus':
+                otime += 600.
         return otime
 
     ############################################################################

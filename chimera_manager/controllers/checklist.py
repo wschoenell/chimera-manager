@@ -57,6 +57,7 @@ class CheckList(object):
 
     def __start__(self):
 
+        self.log.debug('Starting...')
         # configure items list
         from chimera_manager.controllers import model
         for name,obj in inspect.getmembers(model):
@@ -80,6 +81,7 @@ class CheckList(object):
 
         # Read instrument status flag from database
         session = ioSession()
+        self.log.debug('Loading flags from the database')
         for inst_ in self.controller.getInstrumentList():
             status = session.query(InstrumentOperationStatus).filter(InstrumentOperationStatus.instrument == inst_)
             if status.count() == 0:
@@ -91,6 +93,7 @@ class CheckList(object):
                 session.add(iostatus)
                 session.commit()
             else:
+                self.log.debug('%s[%s]' % (inst_,InstrumentOperationFlag[status[0].status]) )
                 self.controller.setFlag(inst_,
                                         InstrumentOperationFlag[status[0].status],
                                         False)

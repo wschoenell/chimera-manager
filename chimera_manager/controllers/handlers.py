@@ -59,7 +59,7 @@ class TimeHandler(CheckHandler):
         elif abs(check.mode) == 2:
             reftime = site.sunset_twilight_begin(ut.date())
         elif abs(check.mode) == 3:
-            reftime = site.sunset_twilight_end(ut.date())
+            reftime = site.sunset_twilight_end(sunset)
         elif abs(check.mode) == 4:
             reftime = sunrise
         elif abs(check.mode) == 5:
