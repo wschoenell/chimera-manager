@@ -128,7 +128,7 @@ class Targets(Base):
     def lst(self, lmst):
         ah = lmst - self.targetRa
         if ah > 12.:
-            ah = 12.-ah
+            ah -= 24.
         self.targetAH = ah
         # print lmst, self.targetRa, self.targetAH,type(lmst)
 
