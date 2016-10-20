@@ -130,20 +130,22 @@ class RobObs(ChimeraCLI):
             update information, create new project otherwise.
         '''
 
-        config = ConfigParser.RawConfigParser() # Todo: Replace by yaml
-
         self.out('-Reading project information from %s ...' % options.filename)
 
-        config.read(options.filename)
+        with open(options.filename, 'r') as fp:
+            try:
+                config = yaml.load(fp)
+            except yaml.YAMLError as exc:
+                self.exit(exc)
 
         session = RSession()
 
-        if config.has_section('projects'):
-            pid = config.get('projects', 'pid')
-            pi = config.get('projects', 'pi')
-            abstract = config.get('projects', 'abstract')
-            url = config.get('projects', 'url')
-            priority = config.get('projects', 'priority')
+        if 'project' in config:
+            pid = config['project']['pid']
+            pi = config['project']['pi']
+            abstract = config['project']['abstract']
+            url = config['project']['url']
+            priority = config['project']['priority']
 
             project = session.query(Projects).filter(Projects.pid == pid)
             if len(project[:]) > 0:
@@ -161,57 +163,35 @@ class RobObs(ChimeraCLI):
                                    priority=priority)
 
                 session.add(project)
+        else:
+            self.exit('[%s] - No project section defined in configuration file.' % (red('ERROR')))
 
         self.out('-Reading observing block information...')
 
-        sct = np.array(config.sections())
+        if 'observing_blocks' in config:
+            blockpar_list = ['id', 'pid', 'maxairmass', 'minairmass', 'maxmoonBright', 'minmoonBright', 'minmoonDist',
+                             'maxseeing', 'cloudcover', 'schedalgorith', 'applyextcorr']
 
-        bp_sct = sct[np.array([ss.find('blockpar') for ss in sct]) == 0]
+            self.out('--Found %i blocks.' % len(config['observing_blocks']))
+            for observing_block in config['observing_blocks']:
 
-        if bp_sct > 0:
-            self.out('--Found %i blocks.' % len(bp_sct))
-
-            for ss in bp_sct:
-
-                b_id = config.get(ss, 'id')
-                b_pid = config.get(ss, 'pid')
-                maxairmass = config.get(ss, 'maxairmass')
-                minairmass = config.get(ss, 'minairmass')
-                maxmoonBright = config.get(ss, 'maxmoonBright')
-                minmoonBright = config.get(ss, 'minmoonBright')
-                minmoonDist = config.get(ss, 'minmoonDist')
-                maxseeing = config.get(ss, 'maxseeing')
-                cloudcover = config.get(ss, 'cloudcover')
-                schedalgorith = config.get(ss, 'schedalgorith')
-                applyextcorr = config.get(ss, 'applyextcorr')
-
-                block = session.query(BlockPar).filter(BlockPar.bid == b_id).filter(BlockPar.pid == b_pid)
-                if len(block[:]) > 0:
-                    self.out('---Block %s.%s already in database. Updating...' % (b_pid, b_id))
-                    block[0].bid = b_id
-                    block[0].pid = b_pid
-                    block[0].maxairmass = maxairmass
-                    block[0].minairmass = minairmass
-                    block[0].maxmoonBright = maxmoonBright
-                    block[0].minmoonBright = minmoonBright
-                    block[0].minmoonDist = minmoonDist
-                    block[0].maxseeing = maxseeing
-                    block[0].cloudcover = cloudcover
-                    block[0].schedalgorith = schedalgorith
-                    block[0].applyextcorr = applyextcorr
-                else:
+                b_id = config['observing_blocks'][observing_block]['id']
+                b_pid = config['observing_blocks'][observing_block]['pid']
+                block = session.query(BlockPar).filter(BlockPar.bid == b_id).filter(BlockPar.pid == b_pid).first()
+                add = False
+                if block is None:
                     self.out('---Adding block %s.%s to the database...' % (b_pid, b_id))
                     block = BlockPar(bid=b_id,
-                                     pid=b_pid,
-                                     maxairmass=maxairmass,
-                                     minairmass=minairmass,
-                                     maxmoonBright=maxmoonBright,
-                                     minmoonBright=minmoonBright,
-                                     minmoonDist=minmoonDist,
-                                     maxseeing=maxseeing,
-                                     cloudcover=cloudcover,
-                                     schedalgorith=schedalgorith,
-                                     applyextcorr=applyextcorr)
+                                     pid=b_pid)
+                    add = True
+                else:
+                    self.out('---Block %s.%s already in database. Updating...' % (b_pid, b_id))
+
+                for par in blockpar_list:
+                    if par in config['observing_blocks'][observing_block] and (par not in ['id', 'pid']):
+                        self.out(' %s: %s' % (par,config['observing_blocks'][observing_block][par]))
+                        setattr(block,par,config['observing_blocks'][observing_block][par])
+                if add:
                     session.add(block)
             session.commit()
         else:
@@ -1292,7 +1272,7 @@ class RobObs(ChimeraCLI):
 
             objname = subblock[2].name
             pquery = session.query(Projects).filter(Projects.pid == subblock[0].pid)
-            self.out('\t %s' % subblock[2])
+            self.out('\t @%.3f - %s' % (obstime-2400000.5, subblock[2]))
             program = Program(tid=subblock[0].objid,
                               name = objname,
                               pi='',

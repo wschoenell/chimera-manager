@@ -4,7 +4,7 @@ import yaml
 from sqlalchemy import or_, and_
 import datetime
 
-from chimera_manager.controllers.scheduler.model import ObsBlock, ExtMoniDB, ObservedAM, TimedDB, Session
+from chimera_manager.controllers.scheduler.model import ObsBlock, ExtMoniDB, ObservedAM, TimedDB, RecurrentDB, Session
 from chimera.util.enum import Enum
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.site import datetimeFromJD
@@ -443,16 +443,17 @@ class ExtintionMonitor(BaseScheduleAlgorith):
     def add(block):
         session = Session()
 
+        obsblock = session.merge(block[0])
         # Check if this is already in the database
-        ext_moni_block = session.query(ExtMoniDB).filter(ExtMoniDB.pid == block[0].pid,
-                                                         ExtMoniDB.tid == block[0].objid).first()
+        ext_moni_block = session.query(ExtMoniDB).filter(ExtMoniDB.pid == obsblock.pid,
+                                                         ExtMoniDB.tid == obsblock.objid).first()
 
         if ext_moni_block is not None:
             # already in the database, just update
             ext_moni_block.nairmass += 1
         else:
-            ext_moni_block = ExtMoniDB(pid = block[0].pid,
-                                       tid = block[0].objid)
+            ext_moni_block = ExtMoniDB(pid = obsblock.pid,
+                                       tid = obsblock.objid)
             session.add(ext_moni_block)
 
         session.commit()
@@ -631,14 +632,14 @@ class ExtintionMonitor(BaseScheduleAlgorith):
             lst_grid = [site.LST_inRads(datetimeFromJD(tt)) for tt in time_grid]
             airmass_grid = np.array([Airmass(float(site.raDecToAltAz(radecArray[nblock],
                                                          lst).alt)) for lst in lst_grid])
-            min_amidx = np.min(airmass_grid)
+            min_amidx = np.argmin(airmass_grid)
             for dam in dairMass:
 
                 # Before culmination
 
                 converged = False
                 dam_grid = np.abs(airmass_grid[:min_amidx]-dam)
-                mm = dam_grid < maxAirmass[maxAirmass[nblock]]
+                mm = dam_grid < maxAirmass[nblock]
                 dam_grid[mm] = np.max(dam_grid)
                 dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
                 if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
@@ -646,7 +647,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                     converged = True
                 else:
                     dam_pos = np.argmin(np.abs(airmass_grid-dam))
-                    mm = dam_grid < maxAirmass[maxAirmass[nblock]]
+                    mm = dam_grid < maxAirmass[nblock]
                     dam_grid[mm] = np.max(dam_grid)
                     if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
                         time = time_grid[dam_pos]
@@ -1007,7 +1008,7 @@ class Timed(BaseScheduleAlgorith):
             session.commit()
 
     @staticmethod
-    def observed(time, program, site = None, soft = False):
+    def observed(time, program, site = None):
 
         session = Session()
 
@@ -1022,7 +1023,7 @@ class Timed(BaseScheduleAlgorith):
             if timed_observations is not None:
                 timed_observations.finished = True
             block.observed = True
-            block.lastObservation = site.ut().replace(tzinfo=None)
+
         finally:
             session.commit()
 
@@ -1073,9 +1074,9 @@ class Recurrent(BaseScheduleAlgorith):
         reference_date = today - datetime.timedelta(days=recurrence_time)
 
         # Exclude targets that where observed less then a specified ammount of time
-        kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
-                                                     and_(ObsBlock.observed == True,
-                                                          ObsBlock.lastObservation < reference_date)))
+        # kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
+        #                                              and_(ObsBlock.observed == True,
+        #                                                   ObsBlock.lastObservation < reference_date)))
         # Select targets with the Higher algorithm
         programs = Higher.process(slotLen=slotLen,*args,**kwargs)
 
@@ -1095,6 +1096,27 @@ class Recurrent(BaseScheduleAlgorith):
         return Higher.next(time,programs)
 
     @staticmethod
+    def add(block):
+        session = Session()
+
+        obsblock = session.merge(block[0])
+
+        # Check if this is already in the database
+        recurrent_block = session.query(RecurrentDB).filter(RecurrentDB.pid == obsblock.pid,
+                                                          RecurrentDB.blockid == obsblock.id,
+                                                          RecurrentDB.tid == obsblock.objid).first()
+
+        if recurrent_block is None:
+            # Not in the database, add it
+            recurrent_block = RecurrentDB()
+            recurrent_block.pid = obsblock.pid
+            recurrent_block.blockid = obsblock.id
+            recurrent_block.tid = obsblock.objid
+            session.add(recurrent_block)
+
+        session.commit()
+
+    @staticmethod
     def observed(time, program, site = None, soft = False):
         '''
         Process program as observed.
@@ -1102,7 +1124,24 @@ class Recurrent(BaseScheduleAlgorith):
         :param program:
         :return:
         '''
-        Higher.observed(time,program,site)
+        obstime = site.ut().replace(tzinfo=None) # get time and function entry
+
+        session = Session()
+        obsblock = session.merge(program[2])
+        obsblock.observed = True
+
+        if not soft:
+            # obsblock.completed= True
+            obsblock.lastObservation = obstime
+            reccurent_block = session.query(Recurrent).filter(Recurrent.pid == obsblock.pid,
+                                                              Recurrent.blockid == obsblock.blockid,
+                                                              Recurrent.tid == obsblock.objid).first()
+            reccurent_block.visits += 1
+            reccurent_block.lastVisit = obstime
+            if reccurent_block.max_visits > 0 and reccurent_block.visits > reccurent_block.max_visits:
+                obsblock.completed = True
+
+        session.commit()
 
 
 def Airmass(alt):

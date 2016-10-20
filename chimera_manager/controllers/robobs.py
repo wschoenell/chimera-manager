@@ -409,14 +409,14 @@ class RobObs(ChimeraObject):
             #    log.debug('Choose program with priority %i'%p)
             #    return program
 
-        checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
         if program is None:
             # if project cannot be executed return nothing.
             # [TO-CHECK] What the scheduler will do? should sleep for a while and
             # [TO-CHECK] try again.
             session.commit()
             return None
-        elif not self.checkConditions(program,checktime):
+        checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
+        if not self.checkConditions(program,checktime):
             session.commit()
             return None
 

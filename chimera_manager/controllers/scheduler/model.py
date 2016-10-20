@@ -92,13 +92,21 @@ class TimedDB(Base):
                                                                       self.observed_at)
                                                    if self.finished else 'pending')
 
-class Recurrent(Base):
+class RecurrentDB(Base):
     __tablename__ = 'recurrent'
 
     id = Column(Integer, primary_key=True)
+
+    pid = Column(String, ForeignKey("projects.pid"))
+    blockid = Column(Integer, ForeignKey("obsblock.id"))
+    tid = Column(Integer, ForeignKey('targets.id'))
+
     visits = Column(Integer,default=0)
+    max_visits = Column(Integer,default=0) # 0 means unrestricted
     lastVisit = Column(DateTime, default = None)
 
+    def __str__(self):
+        return '[Recurrent:%s] visits: %i lastVisit: %s]' % (self.pid, self.visits, self.lastVisit)
 
 class Targets(Base):
     __tablename__ = "targets"

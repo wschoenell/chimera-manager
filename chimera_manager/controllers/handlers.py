@@ -549,8 +549,8 @@ class InstrumentFlagHandler(CheckHandler):
         elif check.mode == 3:
             # Check if instrument is not locked with specified key
             ret = not manager.hasKey(check.instrument, check.flag)
-            msg = "%s is locked with key %s. " % (check.instrument, check.flag) if ret \
-                else "%s is not locked with key %s. " % (check.instrument, check.flag)
+            msg = "%s is not locked with key %s. " % (check.instrument, check.flag) if ret \
+                else "%s is locked with key %s. " % (check.instrument, check.flag)
         else:
             msg = "Mode %i not available" % check.mode
 
