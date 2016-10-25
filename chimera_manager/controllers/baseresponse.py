@@ -625,6 +625,7 @@ class ConfigureScheduler(BaseResponse):
 
         import yaml
         from chimera.util.position import Position
+        from chimera.util.coord import Coord
         from chimera.controllers.scheduler.model import (Session, Program, AutoFocus, AutoFlat,
                                                  PointVerify, Point,
                                                  Expose)
@@ -660,6 +661,14 @@ class ConfigureScheduler(BaseResponse):
                     manager.broadCast('Exception trying to start scheduler: %s' % repr(e))
                     raise
 
+            def _validateOffset(value):
+                try:
+                    offset = Coord.fromAS(int(value))
+                except ValueError:
+                    offset = Coord.fromDMS(value)
+
+                return offset
+
             session = Session()
 
             programs = []
@@ -694,9 +703,27 @@ class ConfigureScheduler(BaseResponse):
                             position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
                             # self.out('Coords: %s' % position)
                             act.targetAltAz = position
-                        else:
+                        elif 'name' in actconfig:
                             # self.out('Target name: %s' % actconfig['name'])
                             act.targetName = actconfig['name']
+                        elif 'offset' not in actconfig:
+                            manager.broadCast('Empty Point action. No target to point to or offset to perform!')
+                            continue
+
+                        if 'offset' in actconfig:
+                            if 'north' in actconfig['offset']:
+                                offset = _validateOffset(actconfig['offset']['north'])
+                                act.offsetNS = offset
+                            elif 'south' in actconfig['offset']:
+                                offset = _validateOffset(actconfig['offset']['south'])
+                                act.offsetNS = Coord.fromAS(-offset.AS)
+
+                            if 'west' in actconfig['offset']:
+                                offset = _validateOffset(actconfig['offset']['west'])
+                                act.offsetEW = offset
+                            elif 'east' in actconfig['offset']:
+                                offset = _validateOffset(actconfig['offset']['east'])
+                                act.offsetEW = Coord.fromAS(-offset.AS)
 
                     else:
                         for key in actconfig.keys():
