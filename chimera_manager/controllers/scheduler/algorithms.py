@@ -909,7 +909,8 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
         obsblock.observed = True
         # These targets are never completed
-        obsblock.lastObservation = site.ut().replace(tzinfo=None)
+        if not soft:
+            obsblock.lastObservation = site.ut().replace(tzinfo=None)
 
         session.commit()
 
@@ -1008,22 +1009,26 @@ class Timed(BaseScheduleAlgorith):
             session.commit()
 
     @staticmethod
-    def observed(time, program, site = None):
+    def observed(time, program, site = None, soft = False):
 
         session = Session()
 
         try:
             prog = session.merge(program[0])
             block = session.merge(program[2])
+            block.observed = True
+            if not soft:
+                block.lastObservation = site.ut().replace(tzinfo=None)
+
             timed_observations = session.query(TimedDB).filter(TimedDB.pid == prog.pid,
                                                                TimedDB.blockid == block.id,
                                                                TimedDB.tid == prog.tid,
                                                                TimedDB.finished == False).order_by(
                 TimedDB.execute_at).first()
-            if timed_observations is not None:
-                timed_observations.finished = True
-            block.observed = True
 
+            if (timed_observations is not None) and (not soft):
+                timed_observations.finished = True
+                
         finally:
             session.commit()
 
