@@ -1026,9 +1026,9 @@ class Timed(BaseScheduleAlgorith):
                                                                TimedDB.finished == False).order_by(
                 TimedDB.execute_at).first()
 
-            if (timed_observations is not None) and (not soft):
+            if (timed_observations is not None):
                 timed_observations.finished = True
-                
+
         finally:
             session.commit()
 
