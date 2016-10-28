@@ -25,7 +25,7 @@ from chimera.core.callback import callback
 from chimera.core.exceptions import printException, ObjectNotFoundException
 from chimera.util.output import blue, green, red
 from chimera.util.position import Position
-
+from chimera.util.coord import Coord
 
 from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE, DEFAULT_ROBOBS_DATABASE
 from chimera_manager.controllers.scheduler.model import Session as RSession
@@ -410,6 +410,14 @@ class RobObs(ChimeraCLI):
 
         session = RSession()
 
+        def _validateOffset(value):
+            try:
+                offset = Coord.fromAS(int(value))
+            except ValueError:
+                offset = Coord.fromDMS(value)
+
+            return offset
+
         for entry in blockList:
 
             block = entry.data
@@ -515,9 +523,30 @@ class RobObs(ChimeraCLI):
                         position = Position.fromAltAz(actconfig['alt'], actconfig['az'])
                         # self.out('Coords: %s' % position)
                         act.targetAltAz = position
-                    else:
-                        # self.out('Target name: %s' % actconfig['name'])
+                    elif 'name' in actconfig:
+                        self.out('Target name: %s' % actconfig['name'])
                         act.targetName = actconfig['name']
+                    elif 'offset' not in actconfig:
+                        self.exit('[%s] No target to point to or offset to perform!' % red('ERROR'))
+
+                    if 'offset' in actconfig:
+                        if 'north' in actconfig['offset']:
+                            offset = _validateOffset(actconfig['offset']['north'])
+                            self.out('Offset north: %s' % offset)
+                            act.offsetNS = offset
+                        elif 'south' in actconfig['offset']:
+                            offset = _validateOffset(actconfig['offset']['south'])
+                            self.out('Offset south: %s' % offset)
+                            act.offsetNS = Coord.fromAS(-offset.AS)
+
+                        if 'west' in actconfig['offset']:
+                            offset = _validateOffset(actconfig['offset']['west'])
+                            self.out('Offset west: %s' % offset)
+                            act.offsetEW = offset
+                        elif 'east' in actconfig['offset']:
+                            offset = _validateOffset(actconfig['offset']['east'])
+                            self.out('Offset east: %s' % offset)
+                            act.offsetEW = Coord.fromAS(-offset.AS)
 
                 else:
                     for key in actconfig.keys():
