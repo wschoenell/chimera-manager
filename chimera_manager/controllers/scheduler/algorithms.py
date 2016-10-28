@@ -1032,6 +1032,42 @@ class Timed(BaseScheduleAlgorith):
         finally:
             session.commit()
 
+    @staticmethod
+    def soft_clean(pid,block=None):
+        '''
+        Soft clean any schedule routine. This will only erase information about observations.
+        :return:
+        '''
+        session = Session()
+
+        try:
+            timed_observations = session.query(TimedDB).filter(TimedDB.pid == pid,
+                                                               TimedDB.finished == True)
+
+            if (timed_observations is not None):
+                for timed in timed_observations:
+                    timed.finished = False
+
+        finally:
+            session.commit()
+
+    @staticmethod
+    def clean(pid):
+        '''
+        Hard clean any schedule routine. Wipe all information from database
+        :return:
+        '''
+        session = Session()
+
+        try:
+            timed_observations = session.query(TimedDB).filter(TimedDB.pid == pid)
+
+            if (timed_observations is not None):
+                for timed in timed_observations:
+                    session.delete(timed)
+
+        finally:
+            session.commit()
 
 class Recurrent(BaseScheduleAlgorith):
 

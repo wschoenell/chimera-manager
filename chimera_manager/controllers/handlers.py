@@ -60,6 +60,8 @@ class TimeHandler(CheckHandler):
             reftime = site.sunset_twilight_begin(ut.date())
         elif abs(check.mode) == 3:
             reftime = site.sunset_twilight_end(sunset)
+            if reftime-ut > datetime.timedelta(hours=12):
+                reftime = reftime - datetime.timedelta(days=1)
         elif abs(check.mode) == 4:
             reftime = sunrise
         elif abs(check.mode) == 5:
