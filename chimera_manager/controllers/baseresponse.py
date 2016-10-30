@@ -330,12 +330,17 @@ class TelescopeAction(BaseResponse):
         for tel in TelescopeAction.telescope:
             if check.mode == 0:
                 try:
-                    manager.broadCast("Unparking telescope...")
-                    tel.unpark()
-                    manager.setFlag("telescope",IOFlag.READY)
-                    manager.setFlag("dome",IOFlag.READY)
-
+                    if manager.getFlag("telescope") != IOFlag.ERROR:
+                        manager.broadCast("Unparking telescope...")
+                        tel.unpark()
+                        manager.setFlag("telescope",IOFlag.READY)
+                        manager.setFlag("dome",IOFlag.READY)
+                    else:
+                        raise TelescopeActionException("Cannot unpark telescope with ERROR flag set. Check instrument.")
                 except Exception, e:
+                    manager.setFlag("telescope",IOFlag.ERROR)
+                    manager.setFlag("dome",IOFlag.CLOSE)
+
                     manager.broadCast(e)
                     raise
             elif check.mode == 1:
@@ -345,6 +350,8 @@ class TelescopeAction(BaseResponse):
                     manager.setFlag("telescope",IOFlag.CLOSE)
                     manager.setFlag("dome",IOFlag.CLOSE)
                 except Exception, e:
+                    manager.setFlag("telescope",IOFlag.ERROR)
+                    manager.setFlag("dome",IOFlag.CLOSE)
                     manager.broadCast(e)
                     raise
             elif check.mode == 2:
