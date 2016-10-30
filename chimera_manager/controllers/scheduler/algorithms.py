@@ -1115,9 +1115,9 @@ class Recurrent(BaseScheduleAlgorith):
         reference_date = today - datetime.timedelta(days=recurrence_time)
 
         # Exclude targets that where observed less then a specified ammount of time
-        # kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
-        #                                              and_(ObsBlock.observed == True,
-        #                                                   ObsBlock.lastObservation < reference_date)))
+        kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
+                                                     and_(ObsBlock.observed == True,
+                                                          ObsBlock.lastObservation < reference_date)))
         # Select targets with the Higher algorithm
         programs = Higher.process(slotLen=slotLen,*args,**kwargs)
 
