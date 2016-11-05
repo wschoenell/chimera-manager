@@ -643,6 +643,9 @@ class Supervisor(ChimeraObject):
                 msg += ": %s" % message
             self.broadCast(msg)
             self.setFlag("scheduler",InstrumentOperationFlag.ERROR)
+            if not self.runAction('SchedulerInError'):
+                self.broadCast("Could not run action in response to a scheduler error.")
+
             # should I take any action regarding the telescope or even the scheduler itself?
             # Maybe stop the telescope? park the telescope? Or, I could have an action that, if the scheduler is in
             # error it will ask if it should close the telescope. Then, in the next cycle the action will take effect

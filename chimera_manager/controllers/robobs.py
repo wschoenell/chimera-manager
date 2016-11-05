@@ -204,6 +204,8 @@ class RobObs(ChimeraObject):
                 rsession.commit()
                 
                 self._current_program = None
+            elif status != SchedulerStatus.OK:
+                self.stop()
         finally:
             session.commit()
             rsession.commit()

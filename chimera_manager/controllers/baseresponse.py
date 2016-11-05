@@ -590,6 +590,18 @@ class StartScheduler(BaseResponse):
         for sched in StartScheduler.scheduler:
             sched.start()
 
+class StopScheduler(BaseResponse):
+
+    @staticmethod
+    @requires("scheduler")
+    def process(check):
+        # sched = StartScheduler.scheduler
+        manager = StartScheduler.manager
+
+        manager.broadCast('Stopping scheduler.')
+        for sched in StartScheduler.scheduler:
+            sched.stop()
+
 class StartRobObs(BaseResponse):
 
     @staticmethod
