@@ -350,6 +350,19 @@ class Supervisor(ChimeraObject):
                 self.bot.sendMessage(chat_id=id,
                                      text=msg)
 
+    def broadCastPhoto(self,path,msg=''):
+        if self.bot is not None and self["telegram-broascast-ids"] is not None:
+            self.log.debug('Sending %s to %i listeners' % (path, len(self._broadcast_ids)))
+            try:
+                with open(str(path),'rb') as fp:
+                    for id in self._broadcast_ids:
+                        self.bot.sendPhoto(chat_id=id,
+                                           photo=fp)
+            except Exception, e:
+                self.log.exception(e)
+        else:
+            self.log.error('No one to send image to!')
+
     def askWatcher(self,question,waittime):
 
         if self.bot is not None and self["telegram-listen-ids"] is not None:

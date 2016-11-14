@@ -563,6 +563,22 @@ class SendTelegram(BaseResponse):
     def model():
         return model.SendTelegram
 
+class SendPhoto(BaseResponse):
+
+    @staticmethod
+    #@requires("manager")
+    def process(check):
+        manager = BaseResponse.manager
+
+        if os.path.exists(check.path):
+            manager.broadCastPhoto(check.path,check.message)
+        else:
+            manager.broadCast('Could not find file to send %s\n %s' % (check.path,check.message))
+
+    @staticmethod
+    def model():
+        return model.SendPhoto
+
 class Question(BaseResponse):
     @staticmethod
     def process(check):

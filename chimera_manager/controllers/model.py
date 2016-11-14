@@ -398,6 +398,23 @@ class SendTelegram(Response):
     def __str__(self):
         return "[SendTelegram]: %s" % (self.message)
 
+class SendPhoto(Response):
+    __tablename__ = "sendphoto"
+    __mapper_args__ = {'polymorphic_identity': 'SendPhoto'}
+
+    id       = Column(Integer, ForeignKey('response.id'), primary_key=True)
+    message = Column(String)
+    path = Column(String)
+
+    def __init__(self,message='',path=''):
+        self.response_id = self.__tablename__.upper()
+        self.message = message
+        self.path = path
+
+    def __str__(self):
+        return "[SendPhoto]: %s (msg: %s)" % (self.path,
+                                              self.message)
+
 class DomeFan(Response):
     __tablename__ = "domefan"
     __mapper_args__ = {'polymorphic_identity': 'DomeFan'}
