@@ -1174,9 +1174,9 @@ class Recurrent(BaseScheduleAlgorith):
         if not soft:
             # obsblock.completed= True
             obsblock.lastObservation = obstime
-            reccurent_block = session.query(Recurrent).filter(Recurrent.pid == obsblock.pid,
-                                                              Recurrent.blockid == obsblock.blockid,
-                                                              Recurrent.tid == obsblock.objid).first()
+            reccurent_block = session.query(RecurrentDB).filter(RecurrentDB.pid == obsblock.pid,
+                                                              RecurrentDB.blockid == obsblock.blockid,
+                                                              RecurrentDB.tid == obsblock.objid).first()
             reccurent_block.visits += 1
             reccurent_block.lastVisit = obstime
             if reccurent_block.max_visits > 0 and reccurent_block.visits > reccurent_block.max_visits:
