@@ -1165,13 +1165,18 @@ class Recurrent(BaseScheduleAlgorith):
         :param program:
         :return:
         '''
+        log = logging.getLogger('sched-algorith(recurrent)')
+
         obstime = site.ut().replace(tzinfo=None) # get time and function entry
 
         session = Session()
         obsblock = session.merge(program[2])
         obsblock.observed = True
 
+        log.debug('%s: Marking as observed @ %s' % (obsblock.pid, obstime))
+
         if not soft:
+            log.debug('Running in hard mode. Storing main information in database.')
             # obsblock.completed= True
             obsblock.lastObservation = obstime
             reccurent_block = session.query(RecurrentDB).filter(RecurrentDB.pid == obsblock.pid,
@@ -1180,7 +1185,12 @@ class Recurrent(BaseScheduleAlgorith):
             reccurent_block.visits += 1
             reccurent_block.lastVisit = obstime
             if reccurent_block.max_visits > 0 and reccurent_block.visits > reccurent_block.max_visits:
+                log.debug('Max visits (%i) reached. Marking as complete.' % reccurent_block.max_visits)
                 obsblock.completed = True
+            else:
+                log.debug('%i visits completed.' % reccurent_block.visits)
+        else:
+            log.debug('Running in soft mode...')
 
         session.commit()
 
