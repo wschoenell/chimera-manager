@@ -658,7 +658,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                     mm = dam_grid < maxAirmass[nblock]
                     log.debug('%s' % dam_grid)
                     dam_grid[mm] = np.max(dam_grid)
-                    dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
+                    dam_pos = np.argmin(np.abs(airmass_grid[min_amidx:]-dam))
                     if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
                         time = time_grid[dam_pos]
                         converged = True
