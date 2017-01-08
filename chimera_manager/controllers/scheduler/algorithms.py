@@ -637,7 +637,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                 converged = False
 
                 # Before culmination
-                if airmass_grid[1] > airmass_grid[0]:
+                if airmass_grid[1] < airmass_grid[0]:
                     dam_grid = np.abs(airmass_grid[:min_amidx]-dam)
                     mm = dam_grid < maxAirmass[nblock]
                     log.debug('%s' % dam_grid)
