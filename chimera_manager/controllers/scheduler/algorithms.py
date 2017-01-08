@@ -802,6 +802,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
     def next(time, programs):
 
         log = logging.getLogger('sched-algorith(extmoni)')
+        log.addHandler(fileHandler)
 
         mjd = time #ExtintionMonitor.site.MJD()
         lst = ExtintionMonitor.site.LST(datetimeFromJD(time+2400000.5))
