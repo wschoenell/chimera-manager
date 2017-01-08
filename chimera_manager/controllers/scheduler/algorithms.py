@@ -803,6 +803,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
         log = logging.getLogger('sched-algorith(extmoni.next)')
         log.addHandler(fileHandler)
+        log.debug("Selecting target with ExtintionMonitor algorithm.")
 
         mjd = time #ExtintionMonitor.site.MJD()
         lst = ExtintionMonitor.site.LST(datetimeFromJD(time+2400000.5))
@@ -899,8 +900,11 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                 # return program
 
         if observe_program is not None:
+            log.debug("Target ok")
             observe_program[0].slewAt = slewAt
-
+        else:
+            log.debug("Could not find suitable target")
+            
         session.commit()
         return observe_program
 
