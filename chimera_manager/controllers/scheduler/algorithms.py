@@ -801,7 +801,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
     @staticmethod
     def next(time, programs):
 
-        log = logging.getLogger('sched-algorith(extmoni)')
+        log = logging.getLogger('sched-algorith(extmoni.next)')
         log.addHandler(fileHandler)
 
         mjd = time #ExtintionMonitor.site.MJD()
