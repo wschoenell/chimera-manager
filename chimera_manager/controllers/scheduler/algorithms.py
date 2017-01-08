@@ -873,7 +873,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                     if minalt < alt < maxalt:
                         l = np.where(desire_alt <= alt)[0][-1]
                         log.debug("Check if this altitude position is already covered")
-
+                        covered = False
                         for observed_am in extmoni_info.observed_am:
                             lc = np.where(desire_alt <= observed_am.altitude)[0][-1]
                             if l == lc:
@@ -885,8 +885,11 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                                 covered = False
 
                         if not covered:
+                            log.debug("Position uncovered")
                             slewAt = tt
                             break
+                        else:
+                            log.debug("Position covered. continuing")
                     else:
                         log.debug("Current altitude (%.2f) out of range (%.2/%.2f)" % (alt,minalt,maxalt))
 
