@@ -801,6 +801,8 @@ class ExtintionMonitor(BaseScheduleAlgorith):
     @staticmethod
     def next(time, programs):
 
+        log = logging.getLogger('sched-algorith(extmoni)')
+
         mjd = time #ExtintionMonitor.site.MJD()
         lst = ExtintionMonitor.site.LST(datetimeFromJD(time+2400000.5))
 
@@ -835,8 +837,8 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
             covered = False
             if program[0].slewAt < mjd:
-                # Slew time has passed
-                # Calculate target's current altitude
+                log.debug("Slew time has passed. Calculating target's current altitude.")
+
                 alt = ExtintionMonitor.site.raDecToAltAz(target_coord,
                                                                   lst).alt.D
 
@@ -844,39 +846,40 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                     continue
 
                 l = np.where(desire_alt <= alt)[0][-1]
-                # Check if this altitude position was already covered
+                log.debug("Checking if this altitude position was already covered.")
 
                 for observed_am in extmoni_info.observed_am:
                     lc = np.where(desire_alt <= observed_am.altitude)[0][-1]
                     if l == lc:
-                        # position already covered, continue
+                        log.debug("Position already covered, continue.")
                         covered = True
                         break
             else:
-                # Slew still in the future, try to find good time to slew between now and then
-                # logging.debug('Now: %.4f | Slew@: %.2f | Altitude: min/max: %.2f/%.2f' % (mjd,
-                #                                            program[0].slewAt,
-                #                                                                           minalt,
-                #                                                                           maxalt))
+                log.debug("Slew still in the future, try to find good time to slew between now and then")
+                log.debug('Now: %.4f | Slew@: %.2f | Altitude: min/max: %.2f/%.2f' % (mjd,
+                                                                                      program[0].slewAt,
+                                                                                      minalt,
+                                                                                      maxalt))
                 slewAt = program[0].slewAt
                 for tt in np.linspace(mjd,program[0].slewAt,10):
                     observe_lst = ExtintionMonitor.site.LST_inRads(datetimeFromJD(tt+2400000.5))
                     alt = ExtintionMonitor.site.raDecToAltAz(target_coord,
                                                              observe_lst).alt.D
-                    # logging.debug('Slew@: %.2f (alt/airmass: %.2f/%.3f )' % (tt,alt,
-                    #                                                          1./np.cos(np.pi/2.-alt*np.pi/180.)))
+                    log.debug('Slew@: %.2f (alt/airmass: %.2f/%.3f )' % (tt, alt,
+                                                                         1. / np.cos(np.pi / 2. - alt * np.pi / 180.)))
 
                     if minalt < alt < maxalt:
                         l = np.where(desire_alt <= alt)[0][-1]
-                        # Check if this altitude position is already covered
+                        log.debug("Check if this altitude position is already covered")
 
                         for observed_am in extmoni_info.observed_am:
                             lc = np.where(desire_alt <= observed_am.altitude)[0][-1]
                             if l == lc:
-                                # position already covered, continue
+                                log.debug("Position already covered")
                                 covered = True
                                 break
                             else:
+                                log.debug("Position uncovered")
                                 covered = False
 
                         if not covered:
