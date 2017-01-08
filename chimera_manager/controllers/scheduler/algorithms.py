@@ -802,7 +802,6 @@ class ExtintionMonitor(BaseScheduleAlgorith):
     def next(time, programs):
 
         log = logging.getLogger('sched-algorith(extmoni.next)')
-        log.addHandler(fileHandler)
         log.debug("Selecting target with ExtintionMonitor algorithm.")
 
         mjd = time #ExtintionMonitor.site.MJD()
@@ -887,6 +886,8 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                         if not covered:
                             slewAt = tt
                             break
+                    else:
+                        log.debug("Current altitude (%.2f) out of range (%.2/%.2f)" % (alt,minalt,maxalt))
 
 
             if not covered:
@@ -904,7 +905,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
             observe_program[0].slewAt = slewAt
         else:
             log.debug("Could not find suitable target")
-            
+
         session.commit()
         return observe_program
 
