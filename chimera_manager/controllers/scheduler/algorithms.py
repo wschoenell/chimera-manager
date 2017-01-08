@@ -891,7 +891,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                         else:
                             log.debug("Position covered. continuing")
                     else:
-                        log.debug("Current altitude (%.2f) out of range (%.2/%.2f)" % (alt,minalt,maxalt))
+                        log.debug("Current altitude (%.2f) out of range (%.2f/%.2f)" % (alt,minalt,maxalt))
 
 
             if not covered:
