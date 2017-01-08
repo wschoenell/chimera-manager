@@ -633,28 +633,42 @@ class ExtintionMonitor(BaseScheduleAlgorith):
             airmass_grid = np.array([Airmass(float(site.raDecToAltAz(radecArray[nblock],
                                                          lst).alt)) for lst in lst_grid])
             min_amidx = np.argmin(airmass_grid)
-            log.debug('%s' % airmass_grid)
-            log.debug('%i' % min_amidx)
             for dam in dairMass:
+                converged = False
 
                 # Before culmination
-
-                converged = False
-                dam_grid = np.abs(airmass_grid[:min_amidx]-dam)
-                mm = dam_grid < maxAirmass[nblock]
-                log.debug('%s' % dam_grid)
-                dam_grid[mm] = np.max(dam_grid)
-                dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
-                if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
-                    time = time_grid[dam_pos]
-                    converged = True
-                else:
-                    dam_pos = np.argmin(np.abs(airmass_grid-dam))
+                if airmass_grid[1] > airmass_grid[0]:
+                    dam_grid = np.abs(airmass_grid[:min_amidx]-dam)
                     mm = dam_grid < maxAirmass[nblock]
+                    log.debug('%s' % dam_grid)
                     dam_grid[mm] = np.max(dam_grid)
+                    dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
                     if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
                         time = time_grid[dam_pos]
                         converged = True
+                    else:
+                        dam_pos = np.argmin(np.abs(airmass_grid-dam))
+                        mm = dam_grid < maxAirmass[nblock]
+                        dam_grid[mm] = np.max(dam_grid)
+                        if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
+                            time = time_grid[dam_pos]
+                            converged = True
+                else:
+                    dam_grid = np.abs(airmass_grid[min_amidx:]-dam)
+                    mm = dam_grid < maxAirmass[nblock]
+                    log.debug('%s' % dam_grid)
+                    dam_grid[mm] = np.max(dam_grid)
+                    dam_pos = np.argmin(np.abs(airmass_grid[:min_amidx]-dam))
+                    if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
+                        time = time_grid[dam_pos]
+                        converged = True
+                    else:
+                        dam_pos = np.argmin(np.abs(airmass_grid-dam))
+                        mm = dam_grid < maxAirmass[nblock]
+                        dam_grid[mm] = np.max(dam_grid)
+                        if np.abs(airmass_grid[dam_pos]-dam) < 1e-1:
+                            time = time_grid[dam_pos]
+                            converged = True
 
                 # time = (start+end)/2.
                 # am = dam+1.
