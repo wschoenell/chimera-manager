@@ -901,6 +901,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                 if awaittime < waittime:
                     awaittime = waittime
                     observe_program = program
+                break
                 # session.commit()
                 # return program
 
