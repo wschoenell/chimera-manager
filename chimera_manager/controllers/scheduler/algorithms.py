@@ -484,6 +484,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
 
         nightstart = kwargs['obsStart']
         nightend   = kwargs['obsEnd']
+        time_grid = np.arange(nightstart,nightend,slotLen/60./60./24.)
         site = kwargs['site']
         targets = kwargs['query']
 
@@ -628,7 +629,7 @@ class ExtintionMonitor(BaseScheduleAlgorith):
             end = nightend if end > nightend else end
             log.debug('Trying to allocate %s'%(radecArray[nblock]))
             nballoc_tmp = nballoc
-            time_grid = np.arange(nightstart,nightend,slotLen/60./60./24.)
+
             lst_grid = [site.LST_inRads(datetimeFromJD(tt)) for tt in time_grid]
             airmass_grid = np.array([Airmass(float(site.raDecToAltAz(radecArray[nblock],
                                                          lst).alt)) for lst in lst_grid])
@@ -786,6 +787,13 @@ class ExtintionMonitor(BaseScheduleAlgorith):
             if len(allocateSlot) == nairmass:
                 log.info('Allocating...')
                 obsSlots = np.append(obsSlots,allocateSlot)
+                keep_mask = np.zeros_like(time_grid) == 0
+                for islot in range(len(obsSlots)):
+                    keep_mask = np.bitwise_and(keep_mask,
+                                               np.bitwise_not(time_grid > obsSlots['start'][islot],
+                                                              time_grid < obsSlots['end'][islot])
+                                                  )
+                time_grid = time_grid[keep_mask]
                 nalloc+=1
                 nballoc += nballoc_tmp
             else:
