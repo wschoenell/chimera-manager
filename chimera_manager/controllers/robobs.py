@@ -518,11 +518,13 @@ class RobObs(ChimeraObject):
             return False
 
         # 2) check moon Brightness
-
+        moonPos = site.moonpos(dateTime)
         moonBrightness = site.moonphase(dateTime)*100.
         if blockpar.minmoonBright < moonBrightness < blockpar.maxmoonBright:
-            self._debuglog.debug('\tmoonBrightness:%.2f'%moonBrightness)
+            self._debuglog.debug('\tMoon brightness:%.2f'%moonBrightness)
             pass
+        elif moonPos.alt < 0.:
+            self._debuglog.warning('\tMoon bellow horizon. Moon brightness:%.2f'%moonBrightness)
         else:
             self._debuglog.warning('Wrong Moon Brightness... (%f < %f < %f)'%(blockpar.minmoonBright,
                                                                    moonBrightness,
@@ -530,7 +532,7 @@ class RobObs(ChimeraObject):
             return False
 
         # 3) check moon distance
-        moonRaDec = site.altAzToRaDec(site.moonpos(dateTime),lst)
+        moonRaDec = site.altAzToRaDec(moonPos,lst)
 
         moonDist = raDec.angsep(moonRaDec)
 
