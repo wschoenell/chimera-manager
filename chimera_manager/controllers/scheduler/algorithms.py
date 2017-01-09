@@ -790,8 +790,9 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                 keep_mask = np.zeros_like(time_grid) == 0
                 for islot in range(len(obsSlots)):
                     keep_mask = np.bitwise_and(keep_mask,
-                                               np.bitwise_not(time_grid > obsSlots['start'][islot],
-                                                              time_grid < obsSlots['end'][islot])
+                                               np.bitwise_not(np.bitwise_and(time_grid > obsSlots['start'][islot],
+                                                                             time_grid < obsSlots['end'][islot])
+                                                              )
                                                   )
                 time_grid = time_grid[keep_mask]
                 nalloc+=1
