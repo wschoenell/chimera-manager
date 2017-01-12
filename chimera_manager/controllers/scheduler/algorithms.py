@@ -1031,7 +1031,7 @@ class Timed(BaseScheduleAlgorith):
             if timed_observation is None:
                 return None
 
-            program_list = Higher.next(timed_observation.execute_at,programs)
+            program_list = Higher.next(time,programs)
 
             program = session.merge(program_list[0])
 
