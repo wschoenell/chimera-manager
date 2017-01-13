@@ -1242,7 +1242,7 @@ class RobObs(ChimeraCLI):
         for ii,act in enumerate(obs_block.actions):
             if act.__tablename__ == 'action_expose':
                 otime+=(act.exptime+rot)*act.frames
-            if act.__tablename__ == 'action_focus':
+            elif act.__tablename__ == 'action_focus' and act.step > 0:
                 otime += 600.
         return otime
 
