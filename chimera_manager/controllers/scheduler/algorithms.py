@@ -888,10 +888,11 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                             if l == lc:
                                 log.debug("Position already covered")
                                 covered = True
-                                break
+                                # break
                             else:
                                 log.debug("Position uncovered")
                                 covered = False
+                                break
 
                         if not covered:
                             log.debug("Position uncovered")
