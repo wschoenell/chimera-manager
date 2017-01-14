@@ -387,9 +387,11 @@ class Point(Action):
             ca.targetAltAz = self.targetAltAz
         elif self.targetName is not None:
             ca.targetName = self.targetName
-        elif self.offsetNS is not None:
+
+        if self.offsetNS is not None:
             ca.offsetNS = self.offsetNS
-        elif self.offsetEW is not None:
+
+        if self.offsetEW is not None:
             ca.offsetEW = self.offsetEW
             
         return ca
@@ -397,6 +399,7 @@ class Point(Action):
     def __str__ (self):
         offsetNS_str = '' if self.offsetNS is None else ' north %s' % self.offsetNS \
             if self.offsetNS > 0 else ' south %s' % self.offsetNS
+
         offsetEW_str = '' if self.offsetEW is None else ' west %s' % self.offsetEW \
             if self.offsetEW > 0 else ' east %s' % self.offsetNS
 

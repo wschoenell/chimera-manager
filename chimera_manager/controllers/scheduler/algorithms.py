@@ -854,6 +854,9 @@ class ExtintionMonitor(BaseScheduleAlgorith):
                                                                   lst).alt.D
 
                 if not (minalt < alt < maxalt):
+                    log.debug("Target altitude (%.2f) outside limit (%.2f/%.2f)" % (alt,
+                                                                                    minalt,
+                                                                                    maxalt))
                     continue
 
                 l = np.where(desire_alt <= alt)[0][-1]
