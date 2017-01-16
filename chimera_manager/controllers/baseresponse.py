@@ -201,9 +201,9 @@ class DomeAction(BaseResponse):
                 from chimera.util.coord import Coord
                 target = None
                 try:
-                    if str(check.parameter) == 'opose-sun':
+                    if str(check.parameter) == 'oppose-sun':
                         sunpos = site[0].sunpos()
-                        sun_long = sunpos.long.D + 180.
+                        sun_long = sunpos.az.D + 180.
                         if sun_long > 360.:
                             sun_long = 360.-sun_long
                         target = Coord.fromD(sun_long)
