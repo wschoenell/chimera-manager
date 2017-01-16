@@ -205,7 +205,7 @@ class DomeAction(BaseResponse):
                         sunpos = site[0].sunpos()
                         sun_long = sunpos.az.D + 180.
                         if sun_long > 360.:
-                            sun_long = 360.-sun_long
+                            sun_long -= 360.
                         target = Coord.fromD(sun_long)
                     else:
                         target = Coord.fromDMS(str(check.parameter)) # If this fail, action won't be completed
