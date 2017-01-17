@@ -392,14 +392,14 @@ class RobObs(ChimeraObject):
             self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
 
             # if awaittime+aplen < waittime+plen:
-            if awaittime < waittime:
-            #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:
-                self._debuglog.info('Choose program with priority %i'%p)
-                # put program back with same priority
-                #self.rq.put((prt,program))
-                # return alternate program
-                session.commit()
-                return aprogram
+            # if awaittime < waittime:
+            # #if aprogram.slewAt+aplen/86.4e3 < program.slewAt:
+            #     self._debuglog.info('Choose program with priority %i'%p)
+            #     # put program back with same priority
+            #     #self.rq.put((prt,program))
+            #     # return alternate program
+            #     session.commit()
+            #     return aprogram
             checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
             if not self.checkConditions(program,checktime):
                 program,plen,waittime = aprogram,aplen,awaittime
