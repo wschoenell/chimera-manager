@@ -404,6 +404,15 @@ class RobObs(ChimeraObject):
             if not self.checkConditions(program,checktime):
                 program,plen,waittime = aprogram,aplen,awaittime
 
+            if awaittime+aplen < waittime:
+                self._debuglog.info('Program with priority %i fits in this slot. Selecting it instead.'%p)
+                program, plen, waittime = aprogram, aplen, awaittime
+                # put program back with same priority
+                #self.rq.put((prt,program))
+                # return alternate program
+                # session.commit()
+                # return aprogram
+
             #program,plen,priority = aprogram,aplen,p
             #if not program.slewAt :
             #    # Program should be done right now if possible!
