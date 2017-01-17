@@ -797,6 +797,7 @@ class RobObs(ChimeraCLI):
         # py.xlim(xlim)
         py.xlim(self.obsStart-dt.timedelta(hours=2),self.obsEnd+dt.timedelta(hours=2))
         py.ylim(alt_min,alt_max)
+        py.xticks(rotation=70)
 
         # py.show()
         py.savefig('foo.png')
