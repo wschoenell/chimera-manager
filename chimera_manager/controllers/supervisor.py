@@ -1,6 +1,7 @@
 
 import os
 import shutil
+import urllib
 
 from chimera_manager.controllers.machine import Machine
 from chimera_manager.controllers.checklist import CheckList
@@ -354,10 +355,9 @@ class Supervisor(ChimeraObject):
         if self.bot is not None and self["telegram-broascast-ids"] is not None:
             self.log.debug('Sending %s to %i listeners' % (path, len(self._broadcast_ids)))
             try:
-                with open(str(path),'rb') as fp:
+                with urllib.urlopen(str(path)).fp as fp:
                     for id in self._broadcast_ids:
-                        self.bot.sendPhoto(chat_id=id,
-                                           photo=fp)
+                        self.bot.sendPhoto(chat_id=id, photo=fp)
             except Exception, e:
                 self.log.exception(e)
         else:
