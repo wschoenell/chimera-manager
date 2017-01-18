@@ -386,8 +386,8 @@ class RobObs(ChimeraObject):
 
             awaittime=(aprogram[0].slewAt-nowmjd)*86.4e3
 
-            if awaittime < 0:
-                awaittime = 0
+            if awaittime < 0.:
+                awaittime = 0.
 
             self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
 
@@ -412,6 +412,10 @@ class RobObs(ChimeraObject):
                 # return alternate program
                 # session.commit()
                 # return aprogram
+            elif awaittime < waittime and self.checkConditions(program,awaittime+aplen):
+                program, plen, waittime = aprogram, aplen, awaittime
+                # Checks if program with higher priority can be observed latter on. If so, then use current
+                # program instead if waittime is lower.
 
             #program,plen,priority = aprogram,aplen,p
             #if not program.slewAt :
@@ -488,7 +492,7 @@ class RobObs(ChimeraObject):
 
         return plist
 
-    def checkConditions(self, program, time):
+    def checkConditions(self, program, time, external_checker = None):
         '''
         Check if a program can be executed given all restrictions imposed by airmass, moon distance,
          seeing, cloud cover, etc...
@@ -573,6 +577,10 @@ class RobObs(ChimeraObject):
             pass
 
         if self["weatherstations"] is not None:
+            pass
+
+        if external_checker is not None:
+            # Todo: add a 3rd option which is a function to check if program is ok from the algorithm itself.
             pass
 
         self._debuglog.debug('Target OK!')
