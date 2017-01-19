@@ -419,6 +419,12 @@ class RobObs(ChimeraObject):
                 # Checks if program with higher priority can be observed latter on. If so, then use current
                 # program instead if waittime is lower.
 
+            if awaittime < waittime:
+                self._debuglog.debug('Program with higher priority has a higher waittime (%.f/%.f)' % (awaittime,
+                                                                                                       waittime))
+            if not self.checkConditions(program,awaittime+aplen):
+                self._debuglog.debug('Program with higher priority cannot be observed afterwards (%f)' %
+                                     (awaittime+aplen))
             #program,plen,priority = aprogram,aplen,p
             #if not program.slewAt :
             #    # Program should be done right now if possible!
