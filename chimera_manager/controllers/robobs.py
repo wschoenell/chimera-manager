@@ -375,6 +375,10 @@ class RobObs(ChimeraObject):
             if program is None and can_observe:
                 self._debuglog.info('No higher priority program. Choosing this instead and continue')
                 program = aprogram
+                waittime=(program[0].slewAt-nowmjd)*86.4e3
+                if awaittime < 0.:
+                    awaittime = 0.
+                self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
                 continue
             elif not can_observe:
                 # if condition is False, project cannot be executed. Go to next in the list
@@ -408,8 +412,8 @@ class RobObs(ChimeraObject):
             #     session.commit()
             #     return aprogram
             checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
-            if not self.checkConditions(program,checktime):
-                program,plen,waittime = aprogram,aplen,awaittime
+            # if not self.checkConditions(program,checktime):
+            #     program,plen,waittime = aprogram,aplen,awaittime
 
             if awaittime+aplen < waittime:
                 self._debuglog.info('Program with priority %i fits in this slot. Selecting it instead.'%p)
