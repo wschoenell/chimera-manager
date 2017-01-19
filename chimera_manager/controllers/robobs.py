@@ -376,9 +376,9 @@ class RobObs(ChimeraObject):
                 self._debuglog.info('No higher priority program. Choosing this instead and continue')
                 program = aprogram
                 waittime=(program[0].slewAt-nowmjd)*86.4e3
-                if awaittime < 0.:
-                    awaittime = 0.
-                self._debuglog.info('Wait time is: %.2f m'%(awaittime/60.))
+                if waittime < 0.:
+                    waittime = 0.
+                self._debuglog.info('Wait time is: %.2f m'%(waittime/60.))
                 continue
             elif not can_observe:
                 # if condition is False, project cannot be executed. Go to next in the list
