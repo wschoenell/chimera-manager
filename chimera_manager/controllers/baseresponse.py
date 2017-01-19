@@ -7,11 +7,19 @@ as long as they inherit the Response class.
 import os, sys
 import copy
 import subprocess
+from urlparse import urlparse
 from chimera_manager.controllers.handlers import requires
 from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
 from chimera_manager.core.exceptions import StatusUpdateException
 from chimera_manager.controllers import model
 from chimera_manager.controllers.exceptions import DomeActionException, TelescopeActionException
+
+def uri_validator(x):
+    try:
+        result = urlparse(x)
+        return True if [result.scheme, result.netloc, result.path] else False
+    except:
+        return False
 
 class BaseResponse(object):
 
@@ -571,6 +579,8 @@ class SendPhoto(BaseResponse):
         manager = BaseResponse.manager
 
         if os.path.exists(check.path):
+            manager.broadCastPhoto(check.path,check.message)
+        elif uri_validator(check.path):
             manager.broadCastPhoto(check.path,check.message)
         else:
             manager.broadCast('Could not find file to send %s\n %s' % (check.path,check.message))
