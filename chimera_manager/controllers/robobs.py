@@ -366,15 +366,22 @@ class RobObs(ChimeraObject):
 
             # aprogram = session.merge(aprogram)
 
-            if not aprogram:
+            if aprogram is None:
                 continue
 
-            if not program:
-                program = aprogram
             checktime = nowmjd if nowmjd > aprogram[0].slewAt else aprogram[0].slewAt
-            if not self.checkConditions(aprogram,checktime):
-                # if condition is False, project cannot be executed. Go to next in the list
+
+            can_observe = self.checkConditions(aprogram,checktime)
+            if program is None and can_observe:
+                self._debuglog.info('No higher priority program. Choosing this instead and continue')
+                program = aprogram
                 continue
+            elif not can_observe:
+                # if condition is False, project cannot be executed. Go to next in the list
+                self._debuglog.info('Selected program cannot be observed. Skipping...')
+                continue
+
+
 
             self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(aplen/60.,aprogram[0].slewAt))
             #return program
