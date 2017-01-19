@@ -413,6 +413,8 @@ class RobObs(ChimeraObject):
                 # session.commit()
                 # return aprogram
             elif awaittime < waittime and self.checkConditions(program,awaittime+aplen):
+                self._debuglog.info('Program with higher priority can be executed after current program. '
+                                    'Selecting program with priority %i.' % p)
                 program, plen, waittime = aprogram, aplen, awaittime
                 # Checks if program with higher priority can be observed latter on. If so, then use current
                 # program instead if waittime is lower.
