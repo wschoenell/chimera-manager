@@ -33,6 +33,7 @@ from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, Obs
                                                          Targets, ObservingLog,
                                                          Program, AutoFocus, AutoFlat, PointVerify, Point, Expose)
 from chimera_manager.controllers.scheduler import algorithms
+from matplotlib.dates import DateFormatter
 
 schedAlgorithms = {}
 for name,obj in inspect.getmembers(algorithms):
@@ -800,6 +801,10 @@ class RobObs(ChimeraCLI):
         py.xticks(rotation=70)
 
         # py.show()
+        py.gcf().axes[0].xaxis.set_major_formatter(DateFormatter('%H:%M'))
+        py.title("Observation plan as of %s" % dt.datetime.utcnow().isoformat().split('.')[0])
+        py.grid()
+        py.ylabel("Altitude (deg)")
         py.savefig('foo.png')
         # data = Data(trace)
         # layout = Layout(yaxis=YAxis(autorange='reversed'))
