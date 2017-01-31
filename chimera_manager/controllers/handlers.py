@@ -491,6 +491,26 @@ class TelescopeHandler(CheckHandler):
         elif check.mode == -4:
             ret = not telescope.isTracking()
             msg = "Telescope not tracking" if ret else "Telescope tracking"
+        elif check.mode == 5: # check if M1 temperature is above frontRing temperature (works with astelco drivers)
+            sensors = telescope.getSensors()
+            sensors_dict = {}
+            for info in sensors:
+                sensors_dict[info[0]] = info[1]
+            ret = sensors_dict['TM1'] > sensors_dict['FrontRing']
+            answer = 'higher' if ret else 'lower'
+            msg = "M1 temperature %s than FrontRing (%.2f/%.2f)" % (answer,
+                                                                    sensors_dict['TM1'],
+                                                                    sensors_dict['FrontRing'])
+        elif check.mode == -5: # check if M1 temperature is bellow frontRing temperature (works with astelco drivers)
+            sensors = telescope.getSensors()
+            sensors_dict = {}
+            for info in sensors:
+                sensors_dict[info[0]] = info[1]
+            ret = sensors_dict['TM1'] < sensors_dict['FrontRing']
+            answer = 'lower' if ret else 'higher'
+            msg = "M1 temperature %s than FrontRing (%.2f/%.2f)" % (answer,
+                                                                    sensors_dict['TM1'],
+                                                                    sensors_dict['FrontRing'])
 
 
         return ret, msg
