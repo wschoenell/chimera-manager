@@ -51,6 +51,7 @@ class CheckList(object):
                               CheckTransparency: TransparencyHandler,
                               CheckInstrumentFlag: InstrumentFlagHandler,
                               CheckWeatherStation: CheckWeatherStationHandler,
+                              CheckTelescope: TelescopeHandler,
                               }
         self.itemsList = {}
         self.responseList = {}
