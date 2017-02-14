@@ -1158,10 +1158,13 @@ class Recurrent(BaseScheduleAlgorith):
         today = kwargs['site'].ut().replace(tzinfo=None)
         reference_date = today - datetime.timedelta(days=recurrence_time)
 
+        ntargets = len(kwargs['query'][:])
         # Exclude targets that where observed less then a specified ammount of time
         kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
                                                      and_(ObsBlock.observed == True,
                                                           ObsBlock.lastObservation < reference_date)))
+        new_ntargets = len(kwargs['query'][:])
+        log.debug('Filtering %i of %i targets' % (new_ntargets, ntargets))
         # Select targets with the Higher algorithm
         programs = Higher.process(slotLen=slotLen,*args,**kwargs)
 
