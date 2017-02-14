@@ -1130,7 +1130,8 @@ class Recurrent(BaseScheduleAlgorith):
 
     @staticmethod
     def process(*args,**kwargs):
-        log = logging.getLogger('sched-algorith(recurrent)')
+        log = logging.getLogger('sched-algorith(recurrent.process)')
+        log.addHandler(fileHandler)
 
         # Try to read recurrency time from the configuration. If none is provided, raise an exception
         if ('config' not in kwargs) or ('recurrence' not in kwargs['config']):
@@ -1212,7 +1213,8 @@ class Recurrent(BaseScheduleAlgorith):
         :param program:
         :return:
         '''
-        log = logging.getLogger('sched-algorith(recurrent)')
+        log = logging.getLogger('sched-algorith(recurrent.observed)')
+        log.addHandler(fileHandler)
 
         obstime = site.ut().replace(tzinfo=None) # get time and function entry
 
