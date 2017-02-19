@@ -1226,20 +1226,38 @@ class Recurrent(BaseScheduleAlgorith):
 
         if not soft:
             log.debug('Running in hard mode. Storing main information in database.')
+            # prog = session.merge(program[0])
+            obsblock.observed = True
+            obsblock.lastObservation = site.ut().replace(tzinfo=None)
+
             # obsblock.completed= True
             obsblock.lastObservation = obstime
             reccurent_block = session.query(RecurrentDB).filter(RecurrentDB.pid == obsblock.pid,
-                                                              RecurrentDB.blockid == obsblock.blockid,
-                                                              RecurrentDB.tid == obsblock.objid).first()
-            reccurent_block.visits += 1
-            reccurent_block.lastVisit = obstime
-            if reccurent_block.max_visits > 0 and reccurent_block.visits > reccurent_block.max_visits:
-                log.debug('Max visits (%i) reached. Marking as complete.' % reccurent_block.max_visits)
-                obsblock.completed = True
+                                                                RecurrentDB.blockid == obsblock.id,
+                                                                RecurrentDB.tid == obsblock.objid).first()
+            if reccurent_block is None:
+                log.debug('Block not in recurrent database. Adding block...')
+                print obsblock.blockid
+                reccurent_block = RecurrentDB()
+                reccurent_block.pid = obsblock.pid
+                reccurent_block.blockid = obsblock.id,
+                reccurent_block.tid = obsblock.objid
+                reccurent_block.visits = 1
+                reccurent_block.lastVisit = obstime
+                session.add(reccurent_block)
             else:
-                log.debug('%i visits completed.' % reccurent_block.visits)
+                reccurent_block.visits += 1
+                reccurent_block.lastVisit = obstime
+
+                if 0 < reccurent_block.max_visits < reccurent_block.visits:
+                    log.debug('Max visits (%i) reached. Marking as complete.' % reccurent_block.max_visits)
+                    obsblock.completed = True
+                else:
+                    log.debug('%i visits completed.' % reccurent_block.visits)
         else:
             log.debug('Running in soft mode...')
+            block = session.merge(program[2])
+            block.observed = True
 
         session.commit()
 
