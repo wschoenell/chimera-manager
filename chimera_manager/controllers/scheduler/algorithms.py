@@ -1157,13 +1157,15 @@ class Recurrent(BaseScheduleAlgorith):
         from chimera_manager.controllers.scheduler.model import Targets,ObsBlock
         # Filter target by observing data. Leave "NeverObserved" and those observed more than recurrence_time days ago
         today = kwargs['site'].ut().replace(tzinfo=None)
+        if 'today' in kwargs: # Needed for simulations...
+            today = kwargs['today'].replace(tzinfo=None)
         reference_date = today - datetime.timedelta(days=recurrence_time)
 
         ntargets = len(kwargs['query'][:])
         # Exclude targets that where observed less then a specified ammount of time
         kwargs['query'] = kwargs['query'].filter(or_(ObsBlock.observed == False,
                                                      and_(ObsBlock.observed == True,
-                                                          ObsBlock.lastObservation > reference_date)))
+                                                          ObsBlock.lastObservation < reference_date)))
         new_ntargets = len(kwargs['query'][:])
         log.debug('Filtering %i of %i targets' % (new_ntargets, ntargets))
         # Select targets with the Higher algorithm
