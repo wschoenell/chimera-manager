@@ -343,11 +343,11 @@ class RobObs(ChimeraObject):
 
         if program is not None:
             # program = session.merge(program)
-            if ( (not program[0].slewAt) and (self.checkConditions(program,nowmjd))):
+            if ( (not program[0].slewAt) and (self.checkConditions(program, nowmjd, plen))):
                 # Program should be done right away!
                 return program
 
-            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60.,program[0].slewAt))
+            self._debuglog.info('Current program length: %.2f m. Slew@: %.3f'%(plen/60., program[0].slewAt))
 
             waittime=(program[0].slewAt-nowmjd)*86.4e3
         else:
@@ -371,7 +371,7 @@ class RobObs(ChimeraObject):
 
             checktime = nowmjd if nowmjd > aprogram[0].slewAt else aprogram[0].slewAt
 
-            can_observe = self.checkConditions(aprogram,checktime)
+            can_observe = self.checkConditions(aprogram,checktime,aplen)
             if program is None and can_observe:
                 self._debuglog.info('No higher priority program. Choosing this instead and continue')
                 program = aprogram
@@ -423,7 +423,7 @@ class RobObs(ChimeraObject):
                 # return alternate program
                 # session.commit()
                 # return aprogram
-            elif awaittime < waittime and self.checkConditions(program,nowmjd+(awaittime+aplen)/86400.):
+            elif awaittime < waittime and self.checkConditions(program,nowmjd+(awaittime+aplen)/86400.,plen):
                 self._debuglog.info('Program with higher priority can be executed after current program. '
                                     'Selecting program with priority %i.' % p)
                 program, plen, waittime = aprogram, aplen, awaittime
@@ -450,7 +450,7 @@ class RobObs(ChimeraObject):
             session.commit()
             return None
         checktime = nowmjd if nowmjd > program[0].slewAt else program[0].slewAt
-        if not self.checkConditions(program,checktime):
+        if not self.checkConditions(program,checktime,plen):
             session.commit()
             return None
 
@@ -511,7 +511,7 @@ class RobObs(ChimeraObject):
 
         return plist
 
-    def checkConditions(self, program, time, external_checker = None):
+    def checkConditions(self, program, time, program_length = 0., external_checker = None):
         '''
         Check if a program can be executed given all restrictions imposed by airmass, moon distance,
          seeing, cloud cover, etc...
@@ -548,6 +548,23 @@ class RobObs(ChimeraObject):
                                                                                        airmass,
                                                                                        blockpar.maxairmass))
             return False
+
+        if program_length > 0.:
+            dateTime = datetimeFromJD((time+program_length/86.4e3)+2400000.5)
+            lst = site.LST_inRads(dateTime)  # in radians
+
+            alt = float(site.raDecToAltAz(raDec, lst).alt)
+            airmass = 1./np.cos(np.pi/2.-alt*np.pi/180.)
+
+            if blockpar.minairmass < airmass < blockpar.maxairmass:
+                self._debuglog.debug('\tairmass:%.3f'%airmass)
+                pass
+            else:
+                self._debuglog.warning('Target %s out of airmass range @ %.3f... (%f < %f < %f)'%(target,time,
+                                                                                           blockpar.minairmass,
+                                                                                           airmass,
+                                                                                           blockpar.maxairmass))
+                return False
 
         # 2) check moon Brightness
         moonPos = site.moonpos(dateTime)
