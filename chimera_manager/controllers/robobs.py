@@ -271,7 +271,7 @@ class RobObs(ChimeraObject):
                 if program_info is not None:
                     program = session.merge(program_info[0])
                     obs_block = session.merge(program_info[2])
-                    self._debuglog.debug("Adding program %s to sheduler and starting." % program)
+                    self._debuglog.debug("Adding program %s to scheduler and starting." % program)
                     cprogram = program.chimeraProgram()
                     for act in obs_block.actions:
                         cact = getattr(sys.modules[__name__],act.action_type).chimeraAction(act)
