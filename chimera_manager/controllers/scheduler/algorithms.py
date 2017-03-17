@@ -1218,7 +1218,7 @@ class Recurrent(BaseScheduleAlgorith):
         log = logging.getLogger('sched-algorith(recurrent.observed)')
         log.addHandler(fileHandler)
 
-        obstime = site.ut().replace(tzinfo=None) # get time and function entry
+        obstime = datetimeFromJD(time+2400000.5) #site.ut().replace(tzinfo=None) # get time and function entry
 
         session = Session()
         obsblock = session.merge(program[2])
@@ -1230,7 +1230,7 @@ class Recurrent(BaseScheduleAlgorith):
             log.debug('Running in hard mode. Storing main information in database.')
             # prog = session.merge(program[0])
             obsblock.observed = True
-            obsblock.lastObservation = site.ut().replace(tzinfo=None)
+            obsblock.lastObservation = obstime.replace(tzinfo=None)
 
             # obsblock.completed= True
             obsblock.lastObservation = obstime
