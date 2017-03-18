@@ -421,6 +421,8 @@ class RobObs(ChimeraCLI):
 
         for entry in blockList:
 
+            block_lenght = 0.
+
             block = entry.data
 
             # config = ConfigParser.RawConfigParser()
@@ -565,9 +567,15 @@ class RobObs(ChimeraCLI):
                                 self.err('Could not set attribute %s = %s on action %s' % (key,
                                                                                            actconfig[key],
                                                                                            actconfig['action']))
+
+                        if act.__tablename__ == 'action_expose':
+                            block_lenght += (actconfig['exptime']+12.)*actconfig['frames'] # FIXME: read-out-time hard coded
+                        elif act.__tablename__ == 'action_focus' and act.step > 0:
+                            block_lenght += 600. # FIXME: focus hard coded
+
                 addblock.actions.append(act)
 
-
+            addblock.length = block_lenght
             session.add(addblock)
 
             session.commit()

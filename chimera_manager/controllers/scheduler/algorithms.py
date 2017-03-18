@@ -174,10 +174,12 @@ class Higher(BaseScheduleAlgorith):
 
         moonPar = np.array([( target[1].minmoonDist,
                               target[1].minmoonBright ,
-                              target[1].maxmoonBright ) for target in targets[:]],
+                              target[1].maxmoonBright,
+                              target[0].length) for target in targets[:]],
                            dtype=[('minmoonDist',np.float),
                                   ('minmoonBright',np.float),
-                                  ('maxmoonBright',np.float)])
+                                  ('maxmoonBright',np.float),
+                                  ('lenght',np.float)])
 
         radecPos = np.array([0])
 
@@ -238,8 +240,10 @@ class Higher(BaseScheduleAlgorith):
 
                 def worker(index):
                     try:
+                        time_offset = Coord.fromAS(moonPar['lenght'][index])
+                        log.debug('%s %s %s' % (lst, time_offset.R, time_offset.H))
                         targetPar[index] = (
-                            float(site.raDecToAltAz(radecArray[index],lst).alt),
+                            float(site.raDecToAltAz(radecArray[index],lst+time_offset.R/2.).alt),
                             radecArray[index].angsep(moonRaDec),
                             moonPar['minmoonDist'][index],
                             ((moonPar['minmoonBright'][index] < moonBrightness < moonPar['maxmoonBright'][index])

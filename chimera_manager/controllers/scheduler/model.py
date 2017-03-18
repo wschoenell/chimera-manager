@@ -181,6 +181,7 @@ class ObsBlock(Base):
     completed= Column(Boolean, default=False)
     lastObservation = Column(DateTime, default=None)
     scheduled = Column(Boolean, default=False)
+    length = Column(Float, default=0.)  # Store block length in seconds
     actions   = relation("Action", backref=backref("obsblock", order_by="Action.id"),
                          cascade="all, delete, delete-orphan")
 
