@@ -132,6 +132,7 @@ class Higher(BaseScheduleAlgorith):
                 slotLen = 60.
 
         pool_size = 1
+        max_sched_blocks = -1
         if 'config' in kwargs:
             config = kwargs['config']
             if 'pool_size' in config:
@@ -139,6 +140,10 @@ class Higher(BaseScheduleAlgorith):
 
             if 'slotLen' in config:
                 slotLen = config['slotLen']
+
+
+            if 'max_sched_blocks' in config:
+                max_sched_blocks = config['max_sched_blocks']
 
         nightstart = kwargs['obsStart']
         nightend   = kwargs['obsEnd']
@@ -198,6 +203,7 @@ class Higher(BaseScheduleAlgorith):
 
         mask = np.zeros(len(radecArray)) == 0
         #radecPos = np.arange(len(radecArray))
+        nblocks_scheduled = 0
 
         for itr in range(len(obsSlots)):
 
@@ -348,6 +354,10 @@ class Higher(BaseScheduleAlgorith):
                 moonPar = moonPar[mask]
                 mask = mask[mask]
                 obsSlots['blockid'][itr] = s_target[0].blockid
+                nblocks_scheduled += 1
+                if max_sched_blocks > 0 and nblocks_scheduled >= max_sched_blocks:
+                    log.info('Maximum number of scheduled blocks (%i) reached. Stopping.' % max_sched_blocks)
+                    break
 
 
                 # Check if this block has more targets...
