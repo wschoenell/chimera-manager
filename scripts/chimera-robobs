@@ -46,7 +46,6 @@ actionDict = {'autofocus' : AutoFocus,
               'point' : Point,
               'expose' : Expose,
               }
-
 ################################################################################
 
 class RobObs(ChimeraCLI):
