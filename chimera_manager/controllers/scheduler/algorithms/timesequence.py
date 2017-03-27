@@ -194,7 +194,7 @@ class TimeSequence(BaseScheduleAlgorith):
                 # In this algorithm, differently from "HIGHER", a target that is selected now is kept in the queue
                 # so it can be scheduled again in the next slot, in case it is also the best one, thus building a
                 # time monitoring sequence.
-                
+
                 obsSlots['blockid'][itr] = s_target[0].blockid
                 nblocks_scheduled += 1
                 if max_sched_blocks > 0 and nblocks_scheduled >= max_sched_blocks:

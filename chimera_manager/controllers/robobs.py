@@ -552,6 +552,11 @@ class RobObs(ChimeraObject):
         if program_length > 0.:
             dateTime = datetimeFromJD((time+program_length/86.4e3)+2400000.5)
             lst = site.LST_inRads(dateTime)  # in radians
+            night_end = site.sunrise_twilight_begin(time)
+            if dateTime > night_end:
+                self._debuglog.warning('Block finish @ %s. Night end is @ %s!' % (dateTime,
+                                                                                  night_end))
+                return False
 
             alt = float(site.raDecToAltAz(raDec, lst).alt)
             airmass = 1./np.cos(np.pi/2.-alt*np.pi/180.)
