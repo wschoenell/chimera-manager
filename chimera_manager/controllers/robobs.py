@@ -550,9 +550,9 @@ class RobObs(ChimeraObject):
             return False
 
         if program_length > 0.:
-            dateTime = datetimeFromJD((time+program_length/86.4e3)+2400000.5)
+            dateTime = datetimeFromJD((time+program_length/86.4e3)+2400000.5).replace(tzinfo=None)
             lst = site.LST_inRads(dateTime)  # in radians
-            night_end = site.sunrise_twilight_begin(time)
+            night_end = site.sunrise_twilight_begin(time).replace(tzinfo=None)
             if dateTime > night_end:
                 self._debuglog.warning('Block finish @ %s. Night end is @ %s!' % (dateTime,
                                                                                   night_end))
