@@ -137,7 +137,7 @@ class HumidityHandler(CheckHandler):
                     msg += "Elapsed time ok"
                     check.time = site.ut().replace(tzinfo=None)
                 else:
-                    msg += "Elapsed time () too short."
+                    msg += "Elapsed time (%6.3f hours) too short." % ((site.ut().replace(tzinfo=None) - check.time).seconds/3600.)
             else:
                 check.time = site.ut().replace(tzinfo=None)
                 ret = False
