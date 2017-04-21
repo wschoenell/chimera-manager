@@ -342,12 +342,10 @@ class TelescopeAction(BaseResponse):
                         manager.broadCast("Unparking telescope...")
                         tel.unpark()
                         manager.setFlag("telescope",IOFlag.READY)
-                        manager.setFlag("dome",IOFlag.READY)
                     else:
                         raise TelescopeActionException("Cannot unpark telescope with ERROR flag set. Check instrument.")
                 except Exception, e:
                     manager.setFlag("telescope",IOFlag.ERROR)
-                    manager.setFlag("dome",IOFlag.CLOSE)
 
                     manager.broadCast(e)
                     raise
@@ -356,10 +354,8 @@ class TelescopeAction(BaseResponse):
                     manager.broadCast("Parking telescope...")
                     tel.park()
                     manager.setFlag("telescope",IOFlag.CLOSE)
-                    manager.setFlag("dome",IOFlag.CLOSE)
                 except Exception, e:
                     manager.setFlag("telescope",IOFlag.ERROR)
-                    manager.setFlag("dome",IOFlag.CLOSE)
                     manager.broadCast(e)
                     raise
             elif check.mode == 2:
@@ -421,7 +417,7 @@ class TelescopeAction(BaseResponse):
                             manager.broadCast("Could not set telescope speed to %s" % speed)
 
                 except Exception, e:
-                    manager.broadCast("Could not start dome fan. %s" % repr(e))
+                    manager.broadCast("Could not start telescope fan. %s" % repr(e))
                     raise
 
             elif check.mode == 9:
