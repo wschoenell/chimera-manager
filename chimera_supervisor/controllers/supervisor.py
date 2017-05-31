@@ -4,11 +4,11 @@ import shutil
 import contextlib
 import urllib
 
-from chimera_manager.controllers.machine import Machine
-from chimera_manager.controllers.checklist import CheckList
-from chimera_manager.controllers.status import OperationStatus, InstrumentOperationFlag
-from chimera_manager.controllers.states import State
-from chimera_manager.core.exceptions import StatusUpdateException
+from chimera_supervisor.controllers.machine import Machine
+from chimera_supervisor.controllers.checklist import CheckList
+from chimera_supervisor.controllers.status import OperationStatus, InstrumentOperationFlag
+from chimera_supervisor.controllers.states import State
+from chimera_supervisor.core.exceptions import StatusUpdateException
 
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.chimeraobject import ChimeraObject

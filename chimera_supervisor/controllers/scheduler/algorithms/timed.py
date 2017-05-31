@@ -1,6 +1,6 @@
 
-from chimera_manager.controllers.scheduler.algorithms.base import *
-from chimera_manager.controllers.scheduler.algorithms.higher import Higher
+from chimera_supervisor.controllers.scheduler.algorithms.base import *
+from chimera_supervisor.controllers.scheduler.algorithms.higher import Higher
 
 class Timed(BaseScheduleAlgorith):
 

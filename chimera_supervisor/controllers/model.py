@@ -1,4 +1,4 @@
-from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera_supervisor.core.constants import DEFAULT_PROGRAM_DATABASE
 
 from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey, Time, Interval,
                         Float, PickleType, MetaData, create_engine)

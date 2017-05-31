@@ -4,7 +4,7 @@ import yaml
 from sqlalchemy import or_, and_
 import datetime
 
-from chimera_manager.controllers.scheduler.model import ObsBlock, ExtMoniDB, ObservedAM, TimedDB, RecurrentDB, Session
+from chimera_supervisor.controllers.scheduler.model import ObsBlock, ExtMoniDB, ObservedAM, TimedDB, RecurrentDB, Session
 from chimera.util.enum import Enum
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
 from chimera.core.site import datetimeFromJD

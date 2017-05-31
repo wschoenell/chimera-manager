@@ -1,24 +1,24 @@
 
-from chimera_manager.controllers.model import (Session, List, CheckTime, CheckHumidity,
-                                               CheckTemperature, CheckWindSpeed,
-                                               CheckDewPoint, CheckDew, AskListener,
-                                               CheckTransparency, CheckInstrumentFlag,
-                                               CheckDome, CheckTelescope, CheckWeatherStation,
-                                               CheckTransparency, CheckInstrumentFlag,
-                                               Response)
-from chimera_manager.controllers.iostatus_model import Session as ioSession
-from chimera_manager.controllers.iostatus_model import InstrumentOperationStatus, KeyList
+from chimera_supervisor.controllers.model import (Session, List, CheckTime, CheckHumidity,
+                                                  CheckTemperature, CheckWindSpeed,
+                                                  CheckDewPoint, CheckDew, AskListener,
+                                                  CheckTransparency, CheckInstrumentFlag,
+                                                  CheckDome, CheckTelescope, CheckWeatherStation,
+                                                  CheckTransparency, CheckInstrumentFlag,
+                                                  Response)
+from chimera_supervisor.controllers.iostatus_model import Session as ioSession
+from chimera_supervisor.controllers.iostatus_model import InstrumentOperationStatus, KeyList
 
-from chimera_manager.controllers.handlers import (CheckHandler, TimeHandler,
-                                                  HumidityHandler, TemperatureHandler, TransparencyHandler,
-                                                  WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
-                                                  DewHandler, AskListenerHandler,
-                                                  DomeHandler, TelescopeHandler, CheckWeatherStationHandler)
-from chimera_manager.controllers import baseresponse
-from chimera_manager.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
+from chimera_supervisor.controllers.handlers import (CheckHandler, TimeHandler,
+                                                     HumidityHandler, TemperatureHandler, TransparencyHandler,
+                                                     WindSpeedHandler, DewPointHandler, InstrumentFlagHandler,
+                                                     DewHandler, AskListenerHandler,
+                                                     DomeHandler, TelescopeHandler, CheckWeatherStationHandler)
+from chimera_supervisor.controllers import baseresponse
+from chimera_supervisor.controllers.status import FlagStatus, ResponseStatus, InstrumentOperationFlag
 
 from chimera.core.exceptions import ObjectNotFoundException, InvalidLocationException
-from chimera_manager.core.exceptions import CheckAborted,CheckExecutionException
+from chimera_supervisor.core.exceptions import CheckAborted,CheckExecutionException
 
 import logging
 import threading
@@ -60,7 +60,7 @@ class CheckList(object):
 
         self.log.debug('Starting...')
         # configure items list
-        from chimera_manager.controllers import model
+        from chimera_supervisor.controllers import model
         for name,obj in inspect.getmembers(model):
             if inspect.isclass(obj) and issubclass(obj,model.Check):
                 self.itemsList[name.upper()] = obj

@@ -19,10 +19,10 @@ from chimera.core.callback import callback
 from chimera.util.output import blue, green, red
 from chimera.core.exceptions import printException
 
-from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE
-from chimera_manager.controllers.model import Session
-from chimera_manager.controllers.model import (List, Check, CheckTime, Response)
-from chimera_manager.controllers.status import InstrumentOperationFlag
+from chimera_supervisor.core.constants import DEFAULT_PROGRAM_DATABASE
+from chimera_supervisor.controllers.model import Session
+from chimera_supervisor.controllers.model import (List, Check, CheckTime, Response)
+from chimera_supervisor.controllers.status import InstrumentOperationFlag
 
 ################################################################################
 
@@ -30,7 +30,7 @@ class Manager(ChimeraCLI):
     ############################################################################
 
     def __init__(self):
-        ChimeraCLI.__init__(self, "chimera-manager",
+        ChimeraCLI.__init__(self, "chimera-supervisor",
                             "Manager controller", 0.0, port=9010)
 
         '''

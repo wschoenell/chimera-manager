@@ -1,10 +1,17 @@
-chimera-manager plugin
+chimera-supervisor plugin
 =======================
 
 This is a plugin for the chimera observatory control system https://github.com/astroufsc/chimera. It provides a
-"observatory manager" controller. A manager is responsible for autonomously controlling the observatory. Its tasks
+"observatory supervisor" controller. A supervisor is responsible for autonomously controlling the observatory. Its tasks
 includes, but are not limited to, schedule a queue for the night, check the weather conditions and allow the telescope
 to open or close under certain limits and send logging information to human watchers.
+
+This module is extremely flexible. The user sets up a checklist, each item in the list has a series of checking
+routines and can have a series of responses. Therefore, it is possible to configure the supervisor to check several
+different actions on several different conditions and answer with a set of responses.
+
+It also implements a Telegram bot, responsible for broadcasting messages from the module. User can also be queried
+ to answer to specific actions.
 
 Usage
 -----
@@ -18,13 +25,13 @@ Installation instructions. Dependencies, etc...
 
 ::
 
-   pip install -U chimera_template
+   pip install -U chimera_supervisor
 
 or
 
 ::
 
-    pip install -U git+https://github.com/astroufsc/chimera-template.git
+    pip install -U git+https://github.com/astroufsc/chimera-supervisor.git
 
 
 Configuration Example
@@ -35,18 +42,40 @@ Here goes an example of the configuration to be added on ``chimera.config`` file
 ::
 
     controller:
+        type: Supervisor
         name: MyObservatoryManager
-        type: manager
-        max_wind: 60 # maximum allowed wind speed in km/h
-        max_humidity: 85 # maximum allowed external humidity in %
-        min_temp: 1.0 # minimum allowed external temperature in Celsius
-        min_dewpoint: 3.0 # minimum allowed external dew point temperature in Celsius
-        min_sun_alt: -18  # Sun altitude at the beginning/end of the night in degrees
-                          # (when the observations should start/end)
-        close_on_none: True # Close if there is no information about the weather
-        close_on_network: True # Close if there is no network connectivity
-        scheduler_script: /path/to/scheduler # Command line path to the scheduler script. This is executed after the
-                                             # end of the night clean up in preparation for next night
+        freq: 0.025
+        telegram-token: some-telegram-bot-token
+        telegram-broascast-ids: user or group chat id
+        telegram-listen-ids: user or group chat id
+        telescope: /FakeTelescope/fake
+        camera: /FakeCamera/fakeT80Cam
+        dome: /FakeDome/fake
+        weatherstations: /FakeWeatherStation/fake1,/FakeWeatherStation/fake2
+        scheduler: /Scheduler/fake
+        robobs: /RobObs/fake
+
+
+Supervisor Configuration Example
+---------------------
+
+This is how you setup an action. Drop this to an yaml file and load it with the chimera-supervisor script.
+
+::
+
+    checklist:
+      - name: Test3
+        eager: False
+        active: False
+        check:
+          - type: CheckInstrumentFlag
+            instrument: telescope
+            mode: 1
+            flag: READY
+        responses:
+          - type: SendPhoto
+            path: /Users/tiago/Downloads/filters_response.png
+            message: This is a test...
 
 
 Contact

@@ -552,7 +552,7 @@ class InstrumentFlagHandler(CheckHandler):
     @staticmethod
     def process(check):
         manager = InstrumentFlagHandler.manager
-        from chimera_manager.controllers.status import InstrumentOperationFlag
+        from chimera_supervisor.controllers.status import InstrumentOperationFlag
 
         ret = False
         msg = ''
