@@ -134,6 +134,7 @@ class Higher(BaseScheduleAlgorith):
                 targetPar = np.zeros(len(radecArray),
                                      dtype=[('altitude', np.float),
                                             ('start_altitude', np.float),
+                                            ('end_altitude', np.float),
                                             ('moonD', np.float),
                                             ('minmoonD', np.float),
                                             ('mask_moonBright', np.bool)])
@@ -145,6 +146,7 @@ class Higher(BaseScheduleAlgorith):
                         targetPar[index] = (
                             float(site.raDecToAltAz(radecArray[index],lst+time_offset.R/2.).alt),
                             float(site.raDecToAltAz(radecArray[index],lst).alt),
+                            float(site.raDecToAltAz(radecArray[index],lst+time_offset.R).alt),
                             radecArray[index].angsep(moonRaDec),
                             moonPar['minmoonDist'][index],
                             ((moonPar['minmoonBright'][index] < moonBrightness < moonPar['maxmoonBright'][index])
@@ -189,24 +191,23 @@ class Higher(BaseScheduleAlgorith):
                     continue
 
                 #sitelat = np.sum(np.array([float(tt) / 60.**i for i,tt in enumerate(str(site['latitude']).split(':'))]))
-                alt = targetPar['altitude'][moonMask] #np.array([float(site.raDecToAltAz(coords,lst).alt) for coords in tmp_radecArray])
+                alt = targetPar['altitude'][moonMask]
 
                 stg = alt.argmax()
                 start_alt = targetPar['start_altitude'][moonMask][stg]
-
-                # while targets[:][radecPos[stg]][0].blockid in obsSlots['blockid']:
-                #     log.warning('Observing block already scheduled... Should not be available! Looking for another one... Queue may be compromised...')
-                #
-                #     mask[stg] = False
-                #     stg = alt[mask].argmax()
+                end_alt = targetPar['end_altitude'][moonMask][stg]
 
                 # Check airmass
-                airmass = 1./np.cos(np.pi/2.-start_alt*np.pi/180.)
+                airmass = 1./np.cos(np.pi/2.-alt[stg]*np.pi/180.)
+                start_airmass = 1./np.cos(np.pi/2.-start_alt*np.pi/180.)
+                end_airmass = 1./np.cos(np.pi/2.-end_alt*np.pi/180.)
                 # Since this is the highest at this time, doesn't make
                 # sense to iterate over it
-                if airmass > targets[:][radecPos[stg]][1].maxairmass or airmass < 0.:
-                    log.info('Object too low in the sky, (Alt.=%6.2f) airmass = %5.2f (max = %5.2f)... Skipping this slot..'%(alt[stg],airmass,targets[:][radecPos[stg]][1].maxairmass))
-
+                if start_airmass > targets[:][radecPos[stg]][1].maxairmass or \
+                                start_airmass > targets[:][radecPos[stg]][1].maxairmass or airmass < 0.:
+                    log.info('Object too low in the sky, (Alt.=%6.2f) airmass = %5.2f/%5.2f/%5.2f (max = %5.2f)... '
+                             'Skipping this slot..' % (alt[stg], start_airmass, airmass, end_airmass,
+                                                     targets[:][radecPos[stg]][1].maxairmass))
                     continue
 
                 # Now, this one makes sense to iterate over.. But, a target
