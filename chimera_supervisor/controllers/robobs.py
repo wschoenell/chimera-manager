@@ -569,7 +569,9 @@ class RobObs(ChimeraObject):
                                                                                            blockpar.minairmass,
                                                                                            airmass,
                                                                                            blockpar.maxairmass))
-                return False
+                # return False
+                # FIXME
+                pass
 
         # 2) check moon Brightness
         moonPos = site.moonpos(dateTime)
