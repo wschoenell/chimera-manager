@@ -214,9 +214,9 @@ class Supervisor(ChimeraObject):
         msg = 'Select an item to run:\n'
         keyboard = []
         for item in items:
-            keyboard.append(telegram.InlineKeyboardButton('%s' % item, callback_data='%s' % item))
+            keyboard.append([telegram.InlineKeyboardButton('%s' % item, callback_data='%s' % item)])
 
-        reply_markup = telegram.InlineKeyboardMarkup([keyboard])
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
 
         updates = self.bot.getUpdates()
         update_id=None
