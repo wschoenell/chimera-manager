@@ -211,10 +211,56 @@ class Supervisor(ChimeraObject):
             bot.sendMessage(update.message.chat_id, text="No action available")
             return
 
-        msg = 'The following items can be run remotely:\n'
+        msg = 'Select an item to run:\n'
+        keyboard = []
         for item in items:
-            msg += '- %s\n' % item
-        bot.sendMessage(update.message.chat_id, text=msg)
+            keyboard.append(telegram.InlineKeyboardButton('%s' % item, callback_data='%s' % item))
+
+        reply_markup = telegram.InlineKeyboardMarkup([keyboard])
+
+        updates = self.bot.getUpdates()
+        update_id=None
+        for update in updates:
+            update_id = updates[-1].update_id + 1
+
+        # bot.sendMessage(update.message.chat_id, text=msg)
+        msg_id = bot.sendMessage(chat_id=update.message.chat_id,
+                                 text=msg,
+                                 reply_markup=reply_markup
+                                 )
+
+        start_time = time.time()
+        while time.time() - start_time < 60:
+
+            updates = self.bot.getUpdates(offset = update_id)
+
+            for new_update in updates:
+                try:
+                    query = new_update.callback_query
+                    if query is None:
+                        continue
+                    dd = new_update.to_dict()
+
+                    answer = query.data
+                    if answer in items:
+                        self.bot.editMessageText(text='Running action %s...' % answer,
+                                            chat_id=msg_id.chat_id,
+                                            message_id=msg_id.message_id)
+                        self.machine.runAction(answer)
+                        return
+                    else:
+                        self.bot.editMessageText(text='Unidentified answer %s... Try again...' % answer,
+                                            chat_id=msg_id.chat_id,
+                                            message_id=msg_id.message_id)
+
+
+                except Exception, e:
+                    self.log.exception(e)
+
+        self.bot.editMessageText(text='Timed out...',
+                            chat_id=msg_id.chat_id,
+                            message_id=msg_id.message_id)
+
 
     def telegramRun(self, bot, update):
         # bot.sendMessage(update.message.chat_id, text="Running action \"%s\"." % update.message.text)
