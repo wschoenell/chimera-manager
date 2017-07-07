@@ -110,10 +110,14 @@ class HumidityHandler(CheckHandler):
 
         humidity = None
         for i in range(len(weatherstations)):
-            h = weatherstations[i].humidity()
-            if datetime.datetime.utcnow() - h.time < datetime.timedelta(minutes=manager["max_mins"]):
-                humidity = h
-                break
+            try:
+                h = weatherstations[i].humidity()
+                if datetime.datetime.utcnow() - h.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    humidity = h
+                    break
+            except:
+                pass
+
         if humidity is None:
             return check.mode == 0, "No valid weather station data available!"
 
@@ -165,10 +169,14 @@ class TemperatureHandler(CheckHandler):
 
         temperature = None
         for i in range(len(weatherstations)):
-            t = weatherstations[i].temperature()
-            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
-                humidity = t
-                break
+            try:
+                t = weatherstations[i].temperature()
+                if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    humidity = t
+                    break
+            except:
+                pass
+
         if temperature is None:
             return check.mode == 0, "No valid weather station data available!"
 
@@ -221,10 +229,13 @@ class WindSpeedHandler(CheckHandler):
 
         windspeed = None
         for i in range(len(weatherstations)):
-            s = weatherstations[i].wind_speed()
-            if datetime.datetime.utcnow() - s.time < datetime.timedelta(minutes=manager["max_mins"]):
-                windspeed = s
-                break
+            try:
+                s = weatherstations[i].wind_speed()
+                if datetime.datetime.utcnow() - s.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    windspeed = s
+                    break
+            except:
+                pass
         if windspeed is None:
             return check.mode == 0, "No valid weather station data available!"
 
@@ -373,12 +384,16 @@ class DewHandler(CheckHandler):
         manager = DewHandler.manager
 
         for i in range(len(weatherstations)):
-            t = weatherstations[i].temperature()
-            d = weatherstations[i].dew_point()
-            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
-                temperature = t
-                dewpoint = d
-                break
+            try:
+                t = weatherstations[i].temperature()
+                d = weatherstations[i].dew_point()
+                if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    temperature = t
+                    dewpoint = d
+                    break
+            except:
+                pass
+
         if (temperature is None) or (dewpoint is None):
             return check.mode == 0, "No valid weather station data available!"
 
@@ -528,20 +543,26 @@ class CheckWeatherStationHandler(CheckHandler):
         weatherstations = CheckWeatherStationHandler.weatherstations
 
         ws = weatherstations[check.index]
-
-        t = ws.temperature()
-        if check.mode == 0:
-            # Check if WS is ok
-            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
-                return True, "Weather station data OK!"
-            else:
+        try:
+            t = ws.temperature()
+            if check.mode == 0:
+                # Check if WS is ok
+                if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    return True, "Weather station data OK!"
+                else:
+                    return False, "No valid weather station data available!"
+            elif check.mode == 1:
+                # Check if WS is not OK
+                if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    return False, "Weather station data OK!"
+                else:
+                    return True, "No valid weather station data available!"
+        except:
+            if check.mode == 0:
                 return False, "No valid weather station data available!"
-        elif check.mode == 1:
-            # Check if WS is not OK
-            if datetime.datetime.utcnow() - t.time < datetime.timedelta(minutes=manager["max_mins"]):
-                return False, "Weather station data OK!"
             else:
                 return True, "No valid weather station data available!"
+
 
     @staticmethod
     def log(check):
@@ -552,7 +573,7 @@ class InstrumentFlagHandler(CheckHandler):
     @staticmethod
     def process(check):
         manager = InstrumentFlagHandler.manager
-        from chimera_manager.controllers.status import InstrumentOperationFlag
+        from chimera_supervisor.controllers.status import InstrumentOperationFlag
 
         ret = False
         msg = ''

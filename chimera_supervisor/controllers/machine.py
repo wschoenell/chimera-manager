@@ -1,8 +1,8 @@
 
-from chimera_manager.controllers.states import State
-from chimera_manager.controllers.model import Session, List
-from chimera_manager.controllers.status import OperationStatus
-from chimera_manager.core.exceptions import CheckAborted
+from chimera_supervisor.controllers.states import State
+from chimera_supervisor.controllers.model import Session, List
+from chimera_supervisor.controllers.status import OperationStatus
+from chimera_supervisor.core.exceptions import CheckAborted
 
 from chimera.core.site import Site
 

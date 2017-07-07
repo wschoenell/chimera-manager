@@ -1,6 +1,6 @@
 
-from chimera_manager.controllers.scheduler.algorithms.base import *
-from chimera_manager.controllers.scheduler.algorithms.higher import Higher
+from chimera_supervisor.controllers.scheduler.algorithms.base import *
+from chimera_supervisor.controllers.scheduler.algorithms.higher import Higher
 
 class Recurrent(BaseScheduleAlgorith):
 
@@ -43,7 +43,7 @@ class Recurrent(BaseScheduleAlgorith):
                 slotLen = 1800.
         elif 'slotLen' in config:
             slotLen = config['slotLen']
-        from chimera_manager.controllers.scheduler.model import Targets,ObsBlock
+        from chimera_supervisor.controllers.scheduler.model import Targets,ObsBlock
         # Filter target by observing data. Leave "NeverObserved" and those observed more than recurrence_time days ago
         today = kwargs['site'].ut().replace(tzinfo=None)
         if 'today' in kwargs: # Needed for simulations...

@@ -8,11 +8,11 @@ import os, sys
 import copy
 import subprocess
 from urlparse import urlparse
-from chimera_manager.controllers.handlers import requires
-from chimera_manager.controllers.status import InstrumentOperationFlag as IOFlag
-from chimera_manager.core.exceptions import StatusUpdateException
-from chimera_manager.controllers import model
-from chimera_manager.controllers.exceptions import DomeActionException, TelescopeActionException
+from chimera_supervisor.controllers.handlers import requires
+from chimera_supervisor.controllers.status import InstrumentOperationFlag as IOFlag
+from chimera_supervisor.core.exceptions import StatusUpdateException
+from chimera_supervisor.controllers import model
+from chimera_supervisor.controllers.exceptions import DomeActionException, TelescopeActionException
 
 def uri_validator(x):
     try:

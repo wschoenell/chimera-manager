@@ -1,5 +1,5 @@
 
-from chimera_manager.controllers.scheduler.algorithms.base import *
+from chimera_supervisor.controllers.scheduler.algorithms.base import *
 
 class ExtintionMonitor(BaseScheduleAlgorith):
 

@@ -6,11 +6,11 @@ import numpy as np
 import threading
 import inspect
 
-from chimera_manager.controllers.scheduler.model import Session as RSession
-from chimera_manager.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock,
-                                                         ObservingLog, AutoFocus, Point, Expose)
-from chimera_manager.controllers.scheduler.machine import Machine
-from chimera_manager.controllers.scheduler import algorithms
+from chimera_supervisor.controllers.scheduler.model import Session as RSession
+from chimera_supervisor.controllers.scheduler.model import (Program, Targets, BlockPar, ObsBlock,
+                                                            ObservingLog, AutoFocus, Point, Expose)
+from chimera_supervisor.controllers.scheduler.machine import Machine
+from chimera_supervisor.controllers.scheduler import algorithms
 
 from chimera.core.chimeraobject import ChimeraObject
 from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
@@ -569,7 +569,9 @@ class RobObs(ChimeraObject):
                                                                                            blockpar.minairmass,
                                                                                            airmass,
                                                                                            blockpar.maxairmass))
-                return False
+                # return False
+                # FIXME
+                pass
 
         # 2) check moon Brightness
         moonPos = site.moonpos(dateTime)

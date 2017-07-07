@@ -27,12 +27,12 @@ from chimera.util.output import blue, green, red
 from chimera.util.position import Position
 from chimera.util.coord import Coord
 
-from chimera_manager.core.constants import DEFAULT_PROGRAM_DATABASE, DEFAULT_ROBOBS_DATABASE
-from chimera_manager.controllers.scheduler.model import Session as RSession
-from chimera_manager.controllers.scheduler.model import (Projects, BlockPar, ObsBlock,
-                                                         Targets, ObservingLog,
-                                                         Program, AutoFocus, AutoFlat, PointVerify, Point, Expose)
-from chimera_manager.controllers.scheduler import algorithms
+from chimera_supervisor.core.constants import DEFAULT_PROGRAM_DATABASE, DEFAULT_ROBOBS_DATABASE
+from chimera_supervisor.controllers.scheduler.model import Session as RSession
+from chimera_supervisor.controllers.scheduler.model import (Projects, BlockPar, ObsBlock,
+                                                            Targets, ObservingLog,
+                                                            Program, AutoFocus, AutoFlat, PointVerify, Point, Expose)
+from chimera_supervisor.controllers.scheduler import algorithms
 from matplotlib.dates import DateFormatter
 
 schedAlgorithms = {}

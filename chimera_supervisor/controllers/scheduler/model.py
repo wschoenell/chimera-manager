@@ -1,4 +1,4 @@
-from chimera_manager.core.constants import DEFAULT_ROBOBS_DATABASE
+from chimera_supervisor.core.constants import DEFAULT_ROBOBS_DATABASE
 
 from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey,
                         Float, PickleType, MetaData, Text, create_engine)
