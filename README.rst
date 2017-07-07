@@ -1,5 +1,5 @@
 chimera-manager plugin
-=======================
+======================
 
 This is a plugin for the chimera observatory control system https://github.com/astroufsc/chimera. It provides a
 "observatory manager" controller. A manager is responsible for autonomously controlling the observatory. Its tasks
@@ -48,6 +48,12 @@ Here goes an example of the configuration to be added on ``chimera.config`` file
         scheduler_script: /path/to/scheduler # Command line path to the scheduler script. This is executed after the
                                              # end of the night clean up in preparation for next night
 
+
+Telegram Usage
+--------------
+
+- Create bot and get the TOKEN
+- https://api.telegram.org/bot<YourBOTToken>/getUpdates
 
 Contact
 -------
