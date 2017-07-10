@@ -1,32 +1,28 @@
-
-import os
-import shutil
 import contextlib
-import urllib
-
-from chimera_supervisor.controllers.machine import Machine
-from chimera_supervisor.controllers.checklist import CheckList
-from chimera_supervisor.controllers.status import OperationStatus, InstrumentOperationFlag
-from chimera_supervisor.controllers.states import State
-from chimera_supervisor.core.exceptions import StatusUpdateException
-
-from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
-from chimera.core.chimeraobject import ChimeraObject
-from chimera.core.lock import lock
-from chimera.core.event import event
-from chimera.core.log import fmt
-from chimera.controllers.scheduler.states import State as SchedState
-from chimera.controllers.scheduler.status import SchedulerStatus as SchedStatus
-from chimera.interfaces.telescope import TelescopeStatus
-
-import threading
-import telnetlib
-import telegram
-import telegram.ext
 import logging
 import logging.handlers
+import os
+import shutil
 import time
+import urllib
 from collections import OrderedDict
+
+import telegram
+import telegram.ext
+from chimera.controllers.scheduler.states import State as SchedState
+from chimera.controllers.scheduler.status import SchedulerStatus as SchedStatus
+from chimera.core.chimeraobject import ChimeraObject
+from chimera.core.constants import SYSTEM_CONFIG_DIRECTORY
+from chimera.core.event import event
+from chimera.core.lock import lock
+from chimera.interfaces.telescope import TelescopeStatus
+
+from chimera_supervisor.controllers.checklist import CheckList
+from chimera_supervisor.controllers.machine import Machine
+from chimera_supervisor.controllers.states import State
+from chimera_supervisor.controllers.status import InstrumentOperationFlag
+from chimera_supervisor.core.exceptions import StatusUpdateException
+
 
 class Supervisor(ChimeraObject):
 
@@ -38,6 +34,7 @@ class Supervisor(ChimeraObject):
                     "robobs"     : None,
                     "domefan"    : None,
                     "weatherstations" : None,
+                    "seeingmonitors" : None,
                     "telegram-token": None,          # Telegram bot token
                     "telegram-broascast-ids": None,  # Telegram broadcast ids
                     "telegram-listen-ids": None,     # Telegram listen ids
@@ -48,9 +45,8 @@ class Supervisor(ChimeraObject):
     def __init__(self):
         ChimeraObject.__init__(self)
 
-
-        self._base_instrument_list = ["site", "telescope", "camera", "dome", "scheduler", "robobs",
-                                      "domefan", "weatherstations"]
+        self._base_instrument_list = ["site", "telescope", "camera", "dome", "scheduler", "robobs", "domefan",
+                                      "seeingmonitors", "weatherstations"]
         self._instrument_list = {}
 
         self._operationStatus = OrderedDict()

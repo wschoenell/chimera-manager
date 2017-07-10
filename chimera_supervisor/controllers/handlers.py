@@ -92,6 +92,69 @@ class TimeHandler(CheckHandler):
         return "%s"%(check)
 
 
+class SeeingHandler(CheckHandler):
+    '''
+    This class checks if seeing is above or bellow some threshold.
+
+    Process will return True if seeing is above specified threshold  or False, otherwise.
+    '''
+
+    @staticmethod
+    @requires("site")
+    @requires("seeingmonitors")
+    def process(check):
+
+        seeingmonitors = SeeingHandler.seeingmonitors
+        site = SeeingHandler.site[0]
+
+        manager = SeeingHandler.manager
+
+        seeing = None
+        for i in range(len(seeingmonitors)):
+            try:
+                s = seeingmonitors[i].seeing()
+                if datetime.datetime.utcnow() - s.time < datetime.timedelta(minutes=manager["max_mins"]):
+                    seeing = s
+                    break
+            except:
+                pass
+
+        if seeing is None:
+            return check.mode == 0, "No valid seeing data available!"
+
+        if check.mode == 0:  # True if value is higher
+            ret = check.seeing < seeing.value
+            msg = "Seeing OK (%.2f/%.2f)" % (seeing.value, check.humidity) if not ret \
+                else "Seeing higher than specified threshold (%.2f/%.2f)" % (seeing.value, check.seeing)
+            if ret:
+                check.time = site.ut().replace(tzinfo=None)
+            return ret, msg
+        elif check.mode == 1:  # True if value is lower for more than the specified number of hours
+            ret = check.seeing > seeing.value
+            msg = "Nothing to do. Seeing higher than threshold (%.2f/%.2f)." % (
+            seeing.value, check.humidity) if not ret \
+                else "Seeing lower than threshold (%.2f/%.2f)." % (seeing.value, check.seeing)
+
+            if not ret:
+                check.time = site.ut().replace(tzinfo=None)
+            elif check.time is not None:
+                ret = check.time + datetime.timedelta(hours=check.deltaTime) < site.ut().replace(tzinfo=None)
+                if ret:
+                    msg += "Elapsed time ok"
+                    check.time = site.ut().replace(tzinfo=None)
+                else:
+                    msg += "Elapsed time too short."
+            else:
+                check.time = site.ut().replace(tzinfo=None)
+                ret = False
+
+            return ret, msg
+
+    @staticmethod
+    def log(check):
+        return "%s" % (check)
+
+
 class HumidityHandler(CheckHandler):
     '''
     This class checks if humidity is above or bellow some threshold.

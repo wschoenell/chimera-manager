@@ -1,11 +1,11 @@
-from chimera_supervisor.core.constants import DEFAULT_PROGRAM_DATABASE
+import datetime
 
 from sqlalchemy import (Column, String, Integer, DateTime, Boolean, ForeignKey, Time, Interval,
-                        Float, PickleType, MetaData, create_engine)
+                        Float, MetaData, create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relation, backref
 
-import datetime
+from chimera_supervisor.core.constants import DEFAULT_PROGRAM_DATABASE
 
 engine = create_engine('sqlite:///%s' % DEFAULT_PROGRAM_DATABASE, echo=False)
 
@@ -152,6 +152,28 @@ class CheckHumidity(Check):
 
     def __str__ (self):
         return "checkhumidity: threshold %.2f " % (self.humidity)
+
+
+class CheckSeeing(Check):
+    __tablename__ = "checkseeing"
+    __mapper_args__ = {'polymorphic_identity': 'CheckSeeing'}
+
+    id = Column(Integer, ForeignKey('check.id'), primary_key=True)
+    seeing = Column(Float, default=0.0)  # The desired seeing
+    deltaTime = Column(Float, default=0.0)  # The desired time interval
+    time = Column(DateTime, default=None)  # A reference time
+    mode = Column(Integer, default=0)  # Select the mode of operation:
+
+    # 0 - True if seeing is higher than specified
+    # 1 - True if seeing is lower than specified and time is larger than the desired interval
+
+    def __init__(self, seeing=0., deltaTime=0., mode=0):
+        self.seeing = float(seeing)
+        self.deltaTime = deltaTime
+        self.mode = mode
+
+    def __str__(self):
+        return "checkseeing: threshold %.2f " % self.seeing
 
 class CheckTemperature(Check):
     __tablename__ = "checktemperature"
